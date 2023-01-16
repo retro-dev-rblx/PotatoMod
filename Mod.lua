@@ -1,10 +1,10 @@
--- Retrostudio Potato Mod prerelease v0.1.0
+-- Retrostudio Potato Mod release v0.1.1
 debug = 0 -- debug mode, contains features that the average consumer may not need
 
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
---if Players.LocalPlayer.Name == "RULLY84726" then debug=1 end
+if Players.LocalPlayer.Name == "RULLY84726" then debug=1 end
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer.PlayerGui
@@ -42,8 +42,8 @@ LightBack2 = Color3.fromRGB(120,120,120)
 WhiteText = Color3.fromRGB(240,240,240)
 Outline = Color3.fromRGB(100,100,100)
 
--- If in debug mode, stop previous executions of PotatoMod
-if (debug == 1) then
+--stop previous executions of PotatoMod
+if (1 == 1) then
     if StudioGui:FindFirstChild("PotatoMod") then
         --StudioGui:FindFirstChild("PotatoMod").Destroy.Value = true
         StudioGui:FindFirstChild("PotatoMod"):Destroy()
@@ -108,18 +108,36 @@ local function customGuiInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     PmClrConsole.TextSize = 14
     PotatoTab.TextLabel.Text = "PotatoMod"
     PotatoTab.Visible = true
-    PotatoTab.MenuFrame.Size = UDim2.new(0,86,0,26)
+    PotatoTab.MenuFrame.Size = UDim2.new(0,420,0,220)
     ClosePotatoMod = Instance.new("TextButton")
     ClosePotatoMod.Parent = PotatoTab.MenuFrame
+    ClosePotatoMod.Name = "ClosePotatoMod"
     ClosePotatoMod.ZIndex = 3
     ClosePotatoMod.BackgroundColor3 = lbgColor
     ClosePotatoMod.BorderColor3 = olColor
     ClosePotatoMod.Size = UDim2.new(0,80,0,20)
-    ClosePotatoMod.Position = UDim2.new(0,2,0,2)
+    ClosePotatoMod.Position = UDim2.new(1,-84,0,4)
     ClosePotatoMod.TextColor3 = txtColor
     ClosePotatoMod.Text = "Exit PotatoMod"
     ClosePotatoMod.Font = "SourceSans"
     ClosePotatoMod.TextSize = 14
+    local PotatoModLogo = Instance.new("ImageLabel")
+    PotatoModLogo.Parent = PotatoTab.MenuFrame
+    PotatoModLogo.Name = "PotatoModLogo"
+    PotatoModLogo.Image = "rbxassetid://11830984146"
+    PotatoModLogo.Position = UDim2.new(0,10,0,10)
+    PotatoModLogo.Size = UDim2.new(0,174,0,200)
+    PotatoModLogo.BackgroundTransparency = 1
+    local CrisThanks=Instance.new("TextLabel")
+    CrisThanks.Parent = PotatoTab.MenuFrame
+    CrisThanks.Name = "CrisThanks"
+    CrisThanks.Size = UDim2.new(0,230,0,20)
+    CrisThanks.Position = UDim2.new(1,-234,1,-24)
+    CrisThanks.BackgroundTransparency = 1
+    CrisThanks.TextColor3 = lbgColor2
+    CrisThanks.TextSize = 14
+    CrisThanks.Font = "SourceSans"
+    CrisThanks.Text = "Big thanks to Cristiano for making this possible"
     GuiEditor = Instance.new("Frame")
     GuiEditor.Parent = PmGui
     GuiEditor.Name = "GuiEditor"
@@ -162,12 +180,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     Properties.PropertiesScript.PropertyBrickColorPalette.BorderColor3 = olColor
     Properties.PropertiesScript.PropertyBrickColorPalette.BackgroundColor3 = bgColor
     Properties.PropertiesScript.PropertyBrickColorPalette.BorderSizePixel = 1
-    local children =  Properties.PropertiesScript.CategoryItem:GetChildren()
-    for i, child in ipairs(children) do
-	   if(child.Name == "Outline") then
-	       child.BackgroundColor3 = olColor
-	   end
-    end
+    
     local children = Properties.ListOutline.Header:GetChildren()
     for i, child in ipairs(children) do
 	   if(child.ClassName == "TextLabel") then
@@ -178,6 +191,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     end
     changeScrollbar(Properties.ListOutline.ScrollbarBackground,
     bgColor, txtColor, olColor, lbgColor, lbgColor2)
+    
     
     --Toolbox
     Toolbox.BackgroundColor3 = bgColor
@@ -342,6 +356,14 @@ end
 local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     
     --Properties
+    if Properties.PropertiesScript:FindFirstChild("CategoryItem") then
+        local children =  Properties.PropertiesScript.CategoryItem:GetChildren()
+        for i, child in ipairs(children) do
+	        if(child.Name == "Outline") then
+	            child.BackgroundColor3 = olColor
+	        end
+        end
+    end
     
     local children = Properties.ListOutline.PropertyList:GetChildren()
     for i, child in ipairs(children) do
@@ -523,7 +545,10 @@ function destroySelf()
     render:Disconnect()
     PmClrConsole:Destroy()
     PmGui:Destroy()
-    ClosePotatoMod:Destroy()
+    local children = MenusBar.WindowButton.MenuFrame:GetChildren()
+    for i, child in ipairs(children) do
+	    child:Destroy()
+    end
     PotatoTab.Visible = false
     themeInit(Color3.fromRGB(240,240,240),Color3.fromRGB(0,0,0), Color3.fromRGB(130,135,144),
         Color3.fromRGB(185,185,185), Color3.fromRGB(185,185,185))
@@ -567,11 +592,13 @@ function clearConsole()
     Output.ListOutline.ScrollbarBackground.Visible = false
 end
 
-print("------------------")
-print("Potato Mod loaded!")
-print("------------------")
+print("Potato Mod - Theme API init")
 themeInit(DarkBack, WhiteText, Outline, LightBack, LightBack2)
+print("Potato Mod - Gui init")
 customGuiInit(DarkBack, WhiteText, Outline, LightBack, LightBack2)
+print("--------------------------")
+print("Potato Mod loaded!")
+print("--------------------------")
 
 render = RunService.Stepped:Connect(renderStepped)
 PmClrConsole.MouseButton1Click:Connect(clearConsole)
