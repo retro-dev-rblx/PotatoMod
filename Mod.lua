@@ -41,6 +41,7 @@ LightBack = Color3.fromRGB(80,80,80)
 LightBack2 = Color3.fromRGB(120,120,120)
 WhiteText = Color3.fromRGB(240,240,240)
 Outline = Color3.fromRGB(100,100,100)
+SourceSans = "SourceSans"
 
 --stop previous executions of PotatoMod
 if (1 == 1) then
@@ -145,7 +146,7 @@ local function customGuiInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     GuiEditor.BackgroundTransparency = 1
 end
 
-local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
+local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontName)
     
     --Code Editor
     local CodeEditorLocal = CodeEditor.CodeManagerLocal.ScriptTemplate.CodeEditorLocal
@@ -159,6 +160,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     Properties.BackgroundColor3 = bgColor
     Properties.BorderColor3 = olColor
     Properties.TextLabel.TextColor3 = txtColor
+    Properties.TextLabel.Font = fontName
     Properties.TextLabel.BackgroundColor3 = lbgColor
     Properties.TextLabel.BorderColor3 = olColor
     Properties.ListOutline.BackgroundColor3 = bgColor
@@ -168,13 +170,16 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     Properties.ListOutline.PropertyList.BumpForHeader.BackgroundColor3 = bgColor
     Properties.IdentityBackground.ImageColor3 = lbgColor
     Properties.IdentityBackground.IdentityLabel.TextColor3 = txtColor
+    Properties.IdentityBackground.IdentityLabel.Font = fontName
     Properties.PropertiesScript.EnumList.Image = ""
     Properties.PropertiesScript.EnumList.BackgroundTransparency = 0
     Properties.PropertiesScript.EnumList.BackgroundColor3 = olColor
     Properties.PropertiesScript.EnumList.ScrollingFrame.BackgroundColor3 = bgColor
     Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.BackgroundColor3 = bgColor
     Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.TextColor3 = txtColor
+    Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.Font = fontName
     Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.TextLabel.TextColor3 = txtColor
+    Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.TextLabel.Font = fontName
     Properties.PropertiesScript.PropertyBrickColorPalette.Image = ""
     Properties.PropertiesScript.PropertyBrickColorPalette.BackgroundTransparency = 0
     Properties.PropertiesScript.PropertyBrickColorPalette.BorderColor3 = olColor
@@ -185,6 +190,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     for i, child in ipairs(children) do
 	   if(child.ClassName == "TextLabel") then
 	       child.TextColor3 = txtColor
+	       child.Font = fontName
 	       child.BackgroundColor3 = bgColor
 	       child.BorderColor3 = olColor
 	   end
@@ -196,6 +202,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     --Toolbox
     Toolbox.BackgroundColor3 = bgColor
     Toolbox.TextLabel.TextColor3 = txtColor
+    Toolbox.TextLabel.Font = fontName
     Toolbox.TextLabel.BackgroundColor3 = lbgColor
     Toolbox.TextLabel.BorderColor3 = olColor
     Toolbox.EmbedOutline.BackgroundColor3 = bgColor
@@ -206,7 +213,9 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     Controls.SearchControls.SearchBar.BackgroundColor3 = bgColor
     Controls.SearchControls.SearchBar.BorderColor3 = olColor
     Controls.SearchControls.SearchBar.TextColor3 = txtColor
+    Controls.SearchControls.SearchBar.Font = fontName
     Controls.SearchControls.DisplayLabel.DropdownButton.TextColor3 = txtColor
+    Controls.SearchControls.DisplayLabel.DropdownButton.Font = fontName
     Controls.SearchControls.DisplayLabel.DropdownButton.BackgroundColor3 = bgColor
     Controls.SearchControls.DisplayLabel.DropdownButton.BorderColor3 = olColor
     Controls.SearchControls.DisplayLabel.DropdownButton.ImageButton.ImageColor3 = lbgColor2
@@ -216,16 +225,21 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     for i, child in ipairs(children) do
 	   if(child.ClassName == "TextButton") then
 	       child.TextColor3 = txtColor
+	       child.Font = fontName
 	   end
     end
     Controls.Tabs.BackgroundColor3 = bgColor
     Controls.Tabs.BorderSizePixel = 0
     Controls.Tabs.Inventory.BorderColor3 = olColor
     Controls.Tabs.Inventory.TextColor3 = txtColor
+    Controls.Tabs.Inventory.Font = fontName
     Controls.Tabs.Search.BorderColor3 = olColor
     Controls.Tabs.Search.TextColor3 = txtColor
+    Controls.Tabs.Search.Font = fontName
     Controls.InventoryControls.SortLabel.TextColor3 = txtColor
+    Controls.InventoryControls.SortLabel.Font = fontName
     Controls.InventoryControls.SortLabel.DropdownButton.TextColor3 = txtColor
+    Controls.InventoryControls.SortLabel.DropdownButton.Font = fontName
     Controls.InventoryControls.SortLabel.DropdownButton.BackgroundColor3 = bgColor
     Controls.InventoryControls.SortLabel.DropdownButton.BorderColor3 = olColor
     Controls.InventoryControls.SortLabel.DropdownButton.ImageButton.ImageColor3 = lbgColor2
@@ -236,6 +250,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     for i, child in ipairs(children) do
 	   if(child.ClassName == "Frame") then
 	       child.TextLabel.TextColor3 = txtColor
+	       child.TextLabel.Font = fontName
 	       child.ImageLabel.BackgroundColor3 = bgColor
 	   end
     end
@@ -253,18 +268,22 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     BasicObjects.TextLabel.BackgroundColor3 = lbgColor
     BasicObjects.TextLabel.BorderColor3 = olColor
     BasicObjects.TextLabel.TextColor3 = txtColor
+    BasicObjects.TextLabel.Font = fontName
     BasicObjects.BasicObjectsScript.ItemTemplate.BackgroundColor3 = bgColor
     BasicObjects.BasicObjectsScript.ItemTemplate.BorderColor3 = olColor
     BasicObjects.SearchBar.Image = ""
     BasicObjects.SearchBar.BackgroundColor3 = lbgColor
     BasicObjects.SearchBar.BorderColor3 = olColor
     BasicObjects.SearchBar.TextBox.TextColor3 = txtColor
+    BasicObjects.SearchBar.TextBox.Font = fontName
     BasicObjects.SelectText.TextColor3 = txtColor
+    BasicObjects.SelectText.Font = fontName
     changeScrollbar(BasicObjects.ListOutline.ScrollbarBackground, bgColor, txtColor, olColor, lbgColor, lbgColor2)
         
     --TitleBar
     TitleBar.BackgroundColor3 = lbgColor
     TitleBar.TextLabel.TextColor3 = txtColor
+    TitleBar.TextLabel.Font = fontName
     TitleBar.CloseButton.Visible = false
     
     --ToolBar
@@ -305,11 +324,13 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     Output.TextLabel.BackgroundColor3 = lbgColor
     Output.TextLabel.BorderColor3 = olColor
     Output.TextLabel.TextColor3 = txtColor
+    Output.TextLabel.Font = fontName
     changeScrollbar(Output.ListOutline.ScrollbarBackground, bgColor, txtColor, olColor, lbgColor, lbgColor2)
     
     --BottomBar
     BottomBar.TextLabel.BackgroundColor3 = bgColor
     BottomBar.TextLabel.TextColor3 = txtColor
+    BottomBar.TextLabel.Font = fontName
     BottomBar.TextLabel.BackgroundTransparency = 0
     BottomBar.Image = ""
     
@@ -320,6 +341,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     Explorer.TextLabel.BackgroundColor3 = lbgColor
     Explorer.TextLabel.BorderColor3 = olColor
     Explorer.TextLabel.TextColor3 = txtColor
+    Explorer.TextLabel.Font = fontName
     changeScrollbar(Explorer.ListOutline.ScrollbarBackground, bgColor, txtColor, olColor, lbgColor, lbgColor2)
     
     --MenusBar
@@ -330,6 +352,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     for i, child in ipairs(children) do
 	    if(child.ClassName == "TextButton") then
 	        child.TextLabel.TextColor3 = txtColor
+	        child.TextLabel.Font = fontName
             child.TextLabel.BackgroundColor3 = lbgColor
             child.TextLabel.BorderColor3 = olColor
             child.Background.ImageTransparency = 1
@@ -345,6 +368,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
             for i, child2 in ipairs(children2) do
 	            if(child2.ClassName == "TextButton" or child2.ClassName == "TextLabel") then
 	                child2.TextColor3 = txtColor
+	                child2.Font = fontName
 	            end
             end
 	    end
@@ -353,7 +377,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     
 end
 
-local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
+local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontName)
     
     --Properties
     if Properties.PropertiesScript:FindFirstChild("CategoryItem") then
@@ -375,6 +399,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
 	                   child2.HoverGlow.Image = ""
 	                  child2.BackgroundColor3 = lbgColor
 	                  child2.CategoryName.TextColor3 = txtColor
+	                  child2.CategoryName.Font = fontName
 	               else
 	                   child2.SelectionHighlight.Image = ""
 	                child2.MouseOverHighlight.Image = ""
@@ -383,6 +408,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
 	                        --do nothing 
 	                   else
 	                       child2.PropertyHalf.TextLabel.TextColor3 = txtColor
+	                       child2.PropertyHalf.TextLabel.Font = fontName
 	                   end
 	                   local valChildren = child2.ValueHalf:GetChildren()
 	                   for i, valChild in ipairs(valChildren) do
@@ -391,6 +417,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
 	                               --do nothing
 	                            else
 	                                valChild.TextColor3 = txtColor    
+	                                valChild.Font = fontName
 	                            end
 	                        end
 	                   end
@@ -426,6 +453,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     for i, child in ipairs(children) do
 	   if(child.ClassName == "TextButton") then
 	       child.TextColor3 = txtColor
+	       child.Font = fontName
 	       if child.BackgroundColor3 == Color3.fromRGB(43,145,242) then
 	           --do nothing
 	       else
@@ -441,6 +469,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
         StudioGui:FindFirstChild("ToolTipSquare").BackgroundColor3 = bgColor
         StudioGui:FindFirstChild("ToolTipSquare").BorderColor3 = olColor
         StudioGui:FindFirstChild("ToolTipSquare").TextLabel.TextColor3 = txtColor
+        StudioGui:FindFirstChild("ToolTipSquare").TextLabel.Font = fontName
     end
     
     --BasicObjects
@@ -449,6 +478,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
 	    if(child.ClassName == "TextButton") then
 	        child.BackgroundColor3 = bgColor
 	        child.ObjectName.TextColor3 = txtColor
+	        child.ObjectName.Font = fontName
 	    end
     end
     
@@ -460,6 +490,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
 	        child.HoverImage = ""
 	        child.BackgroundColor3 = lbgColor
 	        child.TextLabel.TextColor3 = txtColor
+	        child.TextLabel.Font = fontName
 	        child.BottomLine.BackgroundColor3 = Outline
 	        child.BorderColor3 = Outline
 	    end
@@ -470,9 +501,11 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     for i, child in ipairs(children) do
 	    if(child.ClassName == "TextBox") then
 	        if(child.TextColor3 == Black) then
-	            child.TextColor3 = txtColor   
+	            child.TextColor3 = txtColor  
+	            child.Font = fontName
 	        elseif(child.TextColor3 == Blue) then
-                child.TextColor3 = LightBlue	            
+                child.TextColor3 = LightBlue
+                child.Font = fontName
 	        end
 	        
 	    end
@@ -483,6 +516,7 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
     for i, child in ipairs(children) do
 	    if(child.ClassName == "ImageLabel") then
 	        child.ObjectName.TextColor3 = txtColor
+	        child.ObjectName.Font = fontName
 	    end
     end
     
@@ -494,12 +528,19 @@ local function themeStep(bgColor, txtColor, olColor, lbgColor, lbgColor2)
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").BorderColor3 = olColor
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Divider.BackgroundColor3 = olColor
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Cut.NameLabel.TextColor3 = txtColor
+        Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Cut.NameLabel.Font = fontName
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Cut.ShortcutLabel.TextColor3 = txtColor
+        Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Cut.ShortcutLabel.Font = fontName
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Copy.NameLabel.TextColor3 = txtColor
+        Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Copy.NameLabel.Font = fontName
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Copy.ShortcutLabel.TextColor3 = txtColor
+        Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Copy.ShortcutLabel.Font = fontName
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").PasteInto.NameLabel.TextColor3 = txtColor
+        Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").PasteInto.NameLabel.Font = fontName
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").PasteInto.ShortcutLabel.TextColor3 = txtColor
+        Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").PasteInto.ShortcutLabel.Font = fontName
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Clear.NameLabel.TextColor3 = txtColor
+        Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Clear.NameLabel.Font = fontName
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Clear.ShortcutLabel.TextColor3 = txtColor
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Group.NameLabel.TextColor3 = txtColor
         Explorer.ExplorerScript:FindFirstChild("ExplorerRightClickPopup").Group.ShortcutLabel.TextColor3 = txtColor
@@ -579,7 +620,7 @@ local function renderStepped(_currentTime, deltaTime)
         destroySelf()
     end
 
-    themeStep(DarkBack, WhiteText, Outline, LightBack, LightBack2)
+    themeStep(DarkBack, WhiteText, Outline, LightBack, LightBack2, SourceSans)
 end
 
 function clearConsole()
@@ -593,9 +634,9 @@ function clearConsole()
 end
 
 print("Potato Mod - Theme API init")
-themeInit(DarkBack, WhiteText, Outline, LightBack, LightBack2)
+themeInit(DarkBack, WhiteText, Outline, LightBack, LightBack2, SourceSans)
 print("Potato Mod - Gui init")
-customGuiInit(DarkBack, WhiteText, Outline, LightBack, LightBack2)
+customGuiInit(DarkBack, WhiteText, Outline, LightBack, LightBack2, SourceSans)
 print("--------------------------")
 print("Potato Mod loaded!")
 print("--------------------------")
