@@ -165,7 +165,11 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontNa
     Properties.TextLabel.BorderColor3 = olColor
     Properties.ListOutline.BackgroundColor3 = bgColor
     Properties.ListOutline.BorderColor3 = olColor
-    Properties.ListOutline.Header.BackgroundColor3 = bgColor
+    Properties.ListOutline.Header.BackgroundTransparency = 1
+    Properties.ListOutline.Header.Background.ImageTransparency = 1
+    Properties.ListOutline.Header.Background.BackgroundTransparency = 1
+    Properties.ListOutline.Header.BackgroundB.ImageTransparency = 1
+    Properties.ListOutline.Header.BackgroundB.BackgroundTransparency = 1
     Properties.ListOutline.Header.Frame.BackgroundColor3 = olColor
     Properties.ListOutline.PropertyList.BumpForHeader.BackgroundColor3 = bgColor
     Properties.IdentityBackground.ImageColor3 = lbgColor
@@ -592,9 +596,9 @@ function destroySelf()
     end
     PotatoTab.Visible = false
     themeInit(Color3.fromRGB(240,240,240),Color3.fromRGB(0,0,0), Color3.fromRGB(130,135,144),
-        Color3.fromRGB(185,185,185), Color3.fromRGB(185,185,185))
+        Color3.fromRGB(185,185,185), Color3.fromRGB(185,185,185), SourceSans)
     themeStep(Color3.fromRGB(240,240,240),Color3.fromRGB(0,0,0), Color3.fromRGB(130,135,144),
-        Color3.fromRGB(185,185,185), Color3.fromRGB(185,185,185))
+        Color3.fromRGB(185,185,185), Color3.fromRGB(185,185,185), SourceSans)
     local children = Output.ListOutline.List:GetChildren()
     for i, child in ipairs(children) do
 	    if(child.ClassName == "TextBox") then
