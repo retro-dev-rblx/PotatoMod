@@ -1,1 +1,1 @@
-print("something stupis - elbryan")
+print("wow it works")
