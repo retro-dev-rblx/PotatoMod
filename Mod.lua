@@ -1,4 +1,4 @@
--- Retrostudio Potato Mod release v0.1.1
+-- Retrostudio Potato Mod release v0.1.2
 debug = 0 -- debug mode, contains features that the average consumer may not need
 
 
