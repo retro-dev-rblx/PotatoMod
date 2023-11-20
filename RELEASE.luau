@@ -338,21 +338,7 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontNa
 
 	end
 
-
-	--TabBar
-	TabBar.BackgroundColor3 = bgColor
-	TabBar.BottomLine.BackgroundColor3 = olColor
-	TabBar.BottomLine.BorderColor3 = olColor
-
 	--Output
-	Output.BackgroundColor3 = bgColor
-	Output.BorderColor3 = olColor
-	Output.ListOutline.BackgroundColor3 = bgColor
-	Output.ListOutline.BorderColor3 = olColor
-	Output.WindowHeader.BackgroundColor3 = lbgColor
-	Output.WindowHeader.BorderColor3 = olColor
-	Output.WindowHeader.TextColor3 = txtColor
-	Output.WindowHeader.Font = fontName
 	changeScrollbar(Output.ListOutline.ScrollbarBackground, bgColor, txtColor, olColor, lbgColor, lbgColor2)
 
 	--BottomBar

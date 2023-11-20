@@ -6,23 +6,25 @@ local PlayerGui = LocalPlayer.PlayerGui
 local StudioGui = PlayerGui.StudioGui-- The GUI of the studio
 local Windows = StudioGui.Windows -- The main windows of the studio
 
-local Black = Color3.fromRGB(0,0,0)
 local Blue = Color3.fromRGB(0,0,255)
 local LightBlue = Color3.fromRGB(0,155,255)
-local DarkBack = Color3.fromRGB(40,40,40)
-local LightBack = Color3.fromRGB(80,80,80)
-local LightBack2 = Color3.fromRGB(120,120,120)
-local WhiteText = Color3.fromRGB(240,240,240)
-local Outline = Color3.fromRGB(100,100,100)
-local SourceSans = Enum.Font.SourceSans
 
-local palletes = {
+local themes = {
     dark = {
-        bg = Color3.new(0,0,0)
+        bg = Color3.new(0,0,0),
+        bgl_1 = Color3.new(80,80,80),
+        bgl_2 = Color3.new(120,120,120),
+        bgd = Color3.new(40,40,40),
+        outline = Color3.new(100,100,100),
+        font = Enum.Font.SourceSans,
+        text = Color3.new(240,240,240),
+        text_error = Color3.new(255,0,0),
+        text_warn = Color3.new(255, 128, 0)
     }
 }
 
-palletes["current"] = palletes.dark
+themes["current"] = themes.dark
+local curTheme = themes.current
 
 function splitString(inputString, delimiter)
     local result = {}
@@ -121,18 +123,52 @@ local function registerProperty(instance, property, value, debug)
     end
 end
 
+
+
+-- Toolbar
+-- Static
+local Toolbar = registerStatic(Windows,"Toolbar")
+if Toolbar then
+    
+end
+
+-- TabBar
+-- Static
+local TabBar = registerStatic(Windows,"TabBar")
+if TabBar then
+    registerProperty(TabBar,"BackgroundColor3",curTheme.bg)
+    local BottomLine = registerStatic(TabBar,"BottomLine")
+    if BottomLine then
+        registerProperty(BottomLine,"BackgroundColor3",curTheme.outline)
+        registerProperty(BottomLine,"BorderColor3",curTheme.outline)
+    end
+end
+
 -- Output
 -- Static
-
 local Output = registerStatic(Windows,"Output")
 if Output then
-    registerProperty(Output,"BackgroundColor3",palletes.current.bg)
+    registerProperty(Output,"BackgroundColor3",curTheme.bg)
+    registerProperty(Output,"BorderColor3",curTheme.outline)
     local ListOutline = registerStatic(Output,"ListOutline")
     if ListOutline then
-        registerProperty(ListOutline,"BackgroundColor3",palletes.current.bg)
+        registerProperty(ListOutline,"BackgroundColor3",curTheme.bg)
+        registerProperty(ListOutline,"BorderColor3",curTheme.outline)
     end
-    local ErrorSomething = registerStatic(Output,"CauseAnError")
-    -- This would error in v1
+    local WindowHeader = registerStatic(Output,"WindowHeader")
+    if WindowHeader then
+        registerStatic(WindowHeader,"BackgroundColor3",curTheme.bgl_1)
+        registerStatic(WindowHeader,"BorderColor3",curTheme.outline)
+        registerStatic(WindowHeader,"TextColor3",curTheme.text)
+        registerStatic(WindowHeader,"Font",curTheme.font)
+    end
+end
+
+-- BottomBar
+-- Static
+local BottomBar = registerStatic(Windows,"BottomBar")
+if BottomBar then
+    
 end
 
 
