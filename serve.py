@@ -6,6 +6,8 @@ public_server_url = "https://retrodliver.nicepotato.repl.co"  # Replace with the
 
 filename = "v2.0.0.luau"
 
+print(public_server_url)
+
 def monitor_and_upload():
     last_modified = 0
     while True:

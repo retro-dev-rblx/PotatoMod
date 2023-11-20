@@ -4,7 +4,6 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer.PlayerGui
 local StudioGui = PlayerGui.StudioGui-- The GUI of the studio
-local Windows = StudioGui.Windows -- The main windows of the studio
 
 local Black = Color3.fromRGB(0,0,0)
 local Blue = Color3.fromRGB(0,0,255)
@@ -52,15 +51,15 @@ end
 local function getNested(obj, children, debug)
     debug = debug or false
     if not obj then
-        if not debug then
+        if debug then
             guiLayoutUnknown = true
             return nil
         end
-    end 
+    end
     children = splitString(children,".")
     for k, v in pairs(children) do
-        if not obj:FindFirstChild(v) or not obj:IsA("Instance") then
-            if not debug then
+        if not obj[v] or not obj:IsA("Instance") then
+            if debug then
                 guiLayoutUnknown = true
                 return nil
             end
@@ -77,44 +76,40 @@ end
         2 - potato
     Register new object
 ]]
-local function registerStatic(instance, child, debug)
+local function registerStatic(instance,child, debug)
     debug = debug or false
-    if type(instance) == "table" then instance = instance[1] end
-    if instance and instance:FindFirstChild(child) then 
+    if instance and instance[child] then 
         local new = {instance[child],{}}
         staticGuiList[#staticGuiList] = new
         return new
     else
-        if not debug then
-            warn("PotatoMod2: "..instance.Name.."."..child.. " is missing!")
+        if debug then
             guiLayoutUnknown = true
             return nil
         end
     end
 end
 
-local function registerDynamic(instance, child, debug)
+local function registerDynamic(instance, debug)
     debug = debug or false
-    if type(instance) == "table" then instance = instance[1] end
-    if instance and instance:FindFirstChild(child) then 
+    if instance then 
         local new = {instance,{}}
         dynamicGuiList[#dynamicGuiList] = new
         return new
     else
-        if not debug then
-            warn("PotatoMod2: "..instance.Name.."."..child.. " is missing!")
+        if debug then
             guiLayoutUnknown = true
             return nil
         end
     end
 end
 
-local function registerProperty(instance, property, value, debug)
+local function registerProperty(instance, property, value)
     debug = debug or false
-    if instance then
+    if instance and instance[1][property] then
         instance[2][property] = {instance[1][property],value}
     else
-        if not debug then
+        if debug then
             guiLayoutUnknown = true
             return nil
         end
@@ -124,20 +119,14 @@ end
 -- Output
 -- Static
 
-local Output = registerStatic(Windows,"Output")
+local Output = registerStatic(StudioGui,"Output")
 if Output then
-    registerProperty(Output,"BackgroundColor3",palletes.current.bg)
-    local ListOutline = registerStatic(Output,"ListOutline")
-    if ListOutline then
-        registerProperty(ListOutline,"BackgroundColor3",palletes.current.bg)
-    end
-    local ErrorSomething = registerStatic(Output,"CauseAnError")
-    -- This would error in v1
+    registerProperty(Output,"BackGroundColor3",palletes.current.bg)
 end
 
 
 if guiLayoutUnknown == true then
-    warn("PotatoMod2: Studio has likely updated! Unrecognized layout. PotatoMod will try it's best, but things will probably be broken.")
+    warn("PotatoMod: Studio has likely updated! Unrecognized layout. PotatoMod will try it's best, but things will probably be broken.")
 end
 
 local RENDER_STATE_DEFAULT = 1
@@ -146,11 +135,11 @@ local RENDER_STATE_POTATO = 2
 local function renderStatic(state)
     for k,v in pairs(staticGuiList) do
         for property,value in pairs(v[2]) do
-            v[1][property] = value[state]
+            v[1][property] = value
         end
     end
 end
 
 renderStatic(RENDER_STATE_POTATO)
 
-warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
+print("PotatoInjector has injected PotatoMod!!! wow!!!")
