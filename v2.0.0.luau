@@ -5,6 +5,8 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer.PlayerGui
 local StudioGui = PlayerGui.StudioGui-- The GUI of the studio
 local Windows = StudioGui.Windows -- The main windows of the studio
+local Topbar = StudioGui.Topbar
+local MenusBar = Topbar.MenusBar
 
 local Blue = Color3.fromRGB(0,0,255)
 local LightBlue = Color3.fromRGB(0,155,255)
@@ -72,6 +74,54 @@ local function getNested(obj, children, debug)
     return obj
 end
 
+
+if not MenusBar:FindFirstChild("WindowButton") then handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs!") end
+
+local PotatoTab
+local ClosePotatoMod
+
+local function customGuiInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
+	--Custom Gui
+	PotatoTab.TextLabel.Text = "PotatoMod"
+	PotatoTab.Visible = true
+	PotatoTab.MenuFrame.Size = UDim2.new(0,420,0,220)
+	ClosePotatoMod = Instance.new("TextButton")
+	ClosePotatoMod.Parent = PotatoTab.MenuFrame
+	ClosePotatoMod.Name = "ClosePotatoMod"
+	ClosePotatoMod.ZIndex = 3
+	ClosePotatoMod.BackgroundColor3 = lbgColor
+	ClosePotatoMod.BorderColor3 = olColor
+	ClosePotatoMod.Size = UDim2.new(0,80,0,20)
+	ClosePotatoMod.Position = UDim2.new(1,-84,0,4)
+	ClosePotatoMod.TextColor3 = txtColor
+	ClosePotatoMod.Text = "Exit PotatoMod"
+	ClosePotatoMod.Font = "SourceSans"
+	ClosePotatoMod.TextSize = 14
+	local PotatoModLogo = Instance.new("ImageLabel")
+	PotatoModLogo.Parent = PotatoTab.MenuFrame
+	PotatoModLogo.Name = "PotatoModLogo"
+	PotatoModLogo.Image = "rbxassetid://11830984146"
+	PotatoModLogo.Position = UDim2.new(0,10,0,10)
+	PotatoModLogo.Size = UDim2.new(0,174,0,200)
+	PotatoModLogo.BackgroundTransparency = 1
+	local CrisThanks=Instance.new("TextLabel")
+	CrisThanks.Parent = PotatoTab.MenuFrame
+	CrisThanks.Name = "CrisThanks"
+	CrisThanks.Size = UDim2.new(0,230,0,20)
+	CrisThanks.Position = UDim2.new(1,-234,1,-24)
+	CrisThanks.BackgroundTransparency = 1
+	CrisThanks.TextColor3 = lbgColor2
+	CrisThanks.TextSize = 14
+	CrisThanks.Font = "SourceSans"
+	CrisThanks.Text = "Big thanks to Cristiano for making this possible"
+	GuiEditor = Instance.new("Frame")
+	GuiEditor.Parent = PmGui
+	GuiEditor.Name = "GuiEditor"
+	GuiEditor.Size = UDim2.new(1,0,1,0)
+	GuiEditor.BackgroundTransparency = 1
+end
+
+
 --[[
     1 - instance
     2 - property
@@ -84,23 +134,7 @@ local function registerStatic(instance, child, debug)
     if type(instance) == "table" then instance = instance[1] end
     if instance and instance:FindFirstChild(child) then 
         local new = {instance[child],{}}
-        staticGuiList[#staticGuiList] = new
-        return new
-    else
-        if not debug then
-            warn("PotatoMod2: "..instance.Name.."."..child.. " is missing!")
-            guiLayoutUnknown = true
-            return nil
-        end
-    end
-end
-
-local function registerDynamic(instance, child, debug)
-    debug = debug or false
-    if type(instance) == "table" then instance = instance[1] end
-    if instance and instance:FindFirstChild(child) then 
-        local new = {instance,{}}
-        dynamicGuiList[#dynamicGuiList] = new
+        staticGuiList[#staticGuiList+1] = new
         return new
     else
         if not debug then
@@ -127,14 +161,14 @@ end
 
 -- Toolbar
 -- Static
-local Toolbar = registerStatic(Windows,"Toolbar")
+local Toolbar = registerStatic(Topbar,"ToolBar")
 if Toolbar then
     
 end
 
 -- TabBar
 -- Static
-local TabBar = registerStatic(Windows,"TabBar")
+local TabBar = registerStatic(StudioGui,"TabBar")
 if TabBar then
     registerProperty(TabBar,"BackgroundColor3",curTheme.bg)
     local BottomLine = registerStatic(TabBar,"BottomLine")
@@ -166,7 +200,7 @@ end
 
 -- BottomBar
 -- Static
-local BottomBar = registerStatic(Windows,"BottomBar")
+local BottomBar = registerStatic(StudioGui,"BottomBar")
 if BottomBar then
     
 end
@@ -188,5 +222,6 @@ local function renderStatic(state)
 end
 
 renderStatic(RENDER_STATE_POTATO)
+
 
 warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
