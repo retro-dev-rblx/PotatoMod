@@ -89,11 +89,11 @@ local function changeScrollbar(ScrollbarBackground, bgColor, txtColor, olColor, 
 	ScrollbarBackground.BackgroundColor3 = bgColor
 	ScrollbarBackground.BorderColor3 = olColor
 	ScrollbarBackground.BorderSizePixel = 1
-	
+
 	ScrollbarBackground.Corner.BackgroundColor3 = lbgColor2
 	ScrollbarBackground.Corner.LowerBorder.BackgroundColor3 = lbgColor2
 	ScrollbarBackground.Corner.RightBorder.BackgroundColor3 = lbgColor2
-	
+
 	ScrollbarBackground.Vertical.LeftBorder.BackgroundColor3 = lbgColor2
 	ScrollbarBackground.Vertical.RightBorder.BackgroundColor3 = lbgColor2
 	ScrollbarBackground.Vertical.BarExtents.Image = ""
@@ -106,7 +106,7 @@ local function changeScrollbar(ScrollbarBackground, bgColor, txtColor, olColor, 
 	ScrollbarBackground.Vertical.BarExtents.Bar.Thing.BackgroundColor3 = lbgColor2
 	ScrollbarBackground.Vertical.BarExtents.Bar.Thing.Image = ""
 	ScrollbarBackground.Vertical.BarExtents.Bar.Thing.Size = UDim2.new(0,10,0,10) 
-	
+
 	ScrollbarBackground.Horizontal.LowerBorder.BackgroundColor3 = lbgColor2
 	ScrollbarBackground.Horizontal.UpperBorder.BackgroundColor3 = lbgColor2
 	ScrollbarBackground.Horizontal.BarExtents.Image = ""
@@ -177,7 +177,7 @@ end
 local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontName)
 
 	--Code Editor
-	local CodeEditorLocal = CodeEditor.CodeManagerLocal.ScriptTemplate.CodeEditorLocal
+	local CodeEditorLocal = CodeEditor.CodeEditorMain.ScriptTemplate.EditorScript
 	CodeEditorLocal.PropertiesUiModule.BrickColor.BrickColorPalette.Image = ""
 	CodeEditorLocal.PropertiesUiModule.BrickColor.BrickColorPalette.BackgroundTransparency = 0
 	CodeEditorLocal.PropertiesUiModule.BrickColor.BrickColorPalette.BorderColor3 = olColor
@@ -202,12 +202,12 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontNa
 	Properties.PropertiesScript.EnumList.Image = ""
 	Properties.PropertiesScript.EnumList.BackgroundTransparency = 0
 	Properties.PropertiesScript.EnumList.BackgroundColor3 = olColor
-	Properties.PropertiesScript.EnumList.ScrollingFrame.BackgroundColor3 = bgColor
-	Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.BackgroundColor3 = bgColor
-	Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.TextColor3 = txtColor
-	Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.Font = fontName
-	Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.TextLabel.TextColor3 = txtColor
-	Properties.PropertiesScript.EnumList.ScrollingFrame.ListItem.TextLabel.Font = fontName
+	Properties.PropertiesScript.EnumList.Frame.ScrollingFrame.BackgroundColor3 = bgColor
+	Properties.PropertiesScript.EnumList.Frame.ScrollingFrame.ListItem.BackgroundColor3 = bgColor
+	Properties.PropertiesScript.EnumList.Frame.ScrollingFrame.ListItem.TextColor3 = txtColor
+	Properties.PropertiesScript.EnumList.Frame.ScrollingFrame.ListItem.Font = fontName
+	Properties.PropertiesScript.EnumList.Frame.ScrollingFrame.ListItem.TextLabel.TextColor3 = txtColor
+	Properties.PropertiesScript.EnumList.Frame.ScrollingFrame.ListItem.TextLabel.Font = fontName
 	Properties.PropertiesScript.PropertyBrickColorPalette.Image = ""
 	Properties.PropertiesScript.PropertyBrickColorPalette.BackgroundTransparency = 0
 	Properties.PropertiesScript.PropertyBrickColorPalette.BorderColor3 = olColor
@@ -338,7 +338,21 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontNa
 
 	end
 
+
+	--TabBar
+	TabBar.BackgroundColor3 = bgColor
+	TabBar.BottomLine.BackgroundColor3 = olColor
+	TabBar.BottomLine.BorderColor3 = olColor
+
 	--Output
+	Output.BackgroundColor3 = bgColor
+	Output.BorderColor3 = olColor
+	Output.ListOutline.BackgroundColor3 = bgColor
+	Output.ListOutline.BorderColor3 = olColor
+	Output.WindowHeader.BackgroundColor3 = lbgColor
+	Output.WindowHeader.BorderColor3 = olColor
+	Output.WindowHeader.TextColor3 = txtColor
+	Output.WindowHeader.Font = fontName
 	changeScrollbar(Output.ListOutline.ScrollbarBackground, bgColor, txtColor, olColor, lbgColor, lbgColor2)
 
 	--BottomBar
@@ -373,16 +387,18 @@ local function themeInit(bgColor, txtColor, olColor, lbgColor, lbgColor2, fontNa
 			child.Background.BackgroundTransparency = 0
 			child.Background.BackgroundColor3 = lbgColor
 			child.Background.BorderColor3 = olColor
-			child.MenuFrame.BackgroundColor3 = bgColor
-			child.MenuFrame.BorderColor3 = olColor
-			child.MenuFrame.BackgroundTransparency = 0
-			child.MenuFrame.BorderSizePixel = 1
-			if child.MenuFrame.ClassName == "ImageLabel" then child.MenuFrame.ImageTransparency = 1 end
-			local children2 = child.MenuFrame:GetDescendants()
-			for i, child2 in ipairs(children2) do
-				if(child2.ClassName == "TextButton" or child2.ClassName == "TextLabel") then
-					child2.TextColor3 = txtColor
-					child2.Font = fontName
+			if child:FindFirstChild("MenuFrame") then
+				child.MenuFrame.BackgroundColor3 = bgColor
+				child.MenuFrame.BorderColor3 = olColor
+				child.MenuFrame.BackgroundTransparency = 0
+				child.MenuFrame.BorderSizePixel = 1
+				if child.MenuFrame.ClassName == "ImageLabel" then child.MenuFrame.ImageTransparency = 1 end
+				local children2 = child.MenuFrame:GetDescendants()
+				for i, child2 in ipairs(children2) do
+					if(child2.ClassName == "TextButton" or child2.ClassName == "TextLabel") then
+						child2.TextColor3 = txtColor
+						child2.Font = fontName
+					end
 				end
 			end
 		end
@@ -633,7 +649,7 @@ local function renderStepped(_currentTime, deltaTime)
 	if(pmDestroy.Value == true) then
 		destroySelf()
 	end
-	
+
 	if LocalPlayer.UserId == 20406776 or LocalPlayer.UserId == 1304156816 then
 		themeStep(Color3.fromRGB(240, 240, 240), Color3.fromRGB(0, 0, 0), Color3.fromRGB(130, 135, 144), Color3.fromRGB(185, 185, 185), Color3.fromRGB(185, 185, 185), SourceSans)
 	else

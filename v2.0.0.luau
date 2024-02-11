@@ -13,31 +13,33 @@ local LightBlue = Color3.fromRGB(0,155,255)
 
 local themes = {
     dark = {
-        bg = Color3.new(0,0,0),
-        bgl_1 = Color3.new(80,80,80),
-        bgl_2 = Color3.new(120,120,120),
-        bgd = Color3.new(40,40,40),
-        outline = Color3.new(100,100,100),
+        black = Color3.fromRGB(0,0,0),
+        header = Color3.fromRGB(80,80,80),
+        bgl_2 = Color3.fromRGB(120,120,120),
+        bg = Color3.fromRGB(40,40,40),
+        ol = Color3.fromRGB(100,100,100),
         font = Enum.Font.SourceSans,
-        text = Color3.new(240,240,240),
-        text_error = Color3.new(255,0,0),
-        text_warn = Color3.new(255, 128, 0)
+        text = Color3.fromRGB(240,240,240),
+        text_error = Color3.fromRGB(255,0,0),
+        text_warn = Color3.fromRGB(255, 128, 0)
     }
 }
 
 themes["current"] = themes.dark
-local curTheme = themes.current
 
-function splitString(inputString, delimiter)
-    local result = {}
-    local pattern = string.format("([^%s]+)", delimiter)
-    
-    inputString:gsub(pattern, function(substring)
-        table.insert(result, substring)
-    end)
-    
-    return result
-end
+local theme = {
+    black = "black",
+    header = "header",
+    bgl_2 = "bgl_2",
+    bg = "bg",
+    ol = "ol",
+    font = "font",
+    text = "text",
+    text_error = "text_error",
+    text_warn = "text_warn"
+}
+
+
 
 -- PotatoInjector has no script property
 local debug = false
@@ -53,17 +55,22 @@ local function handleError(errorString)
     print("Challenge Complete: How did we get here?") -- this should not run
 end
 
+local function splitString(inputString, delimiter)
+    local result = {}
+    local pattern = string.format("([^%s]+)", delimiter)
+    
+    inputString:gsub(pattern, function(substring)
+        table.insert(result, substring)
+    end)
+    
+    return result
+end
+
 local function getNested(obj, children, debug)
     debug = debug or false
-    if not obj then
-        if not debug then
-            guiLayoutUnknown = true
-            return nil
-        end
-    end 
     children = splitString(children,".")
-    for k, v in pairs(children) do
-        if not obj:FindFirstChild(v) or not obj:IsA("Instance") then
+    for _, v in pairs(children) do
+        if not obj:IsA("Instance") or not obj:FindFirstChild(v) then
             if not debug then
                 guiLayoutUnknown = true
                 return nil
@@ -74,54 +81,6 @@ local function getNested(obj, children, debug)
     return obj
 end
 
-
-if not MenusBar:FindFirstChild("WindowButton") then handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs!") end
-
-local PotatoTab
-local ClosePotatoMod
-
-local function customGuiInit(bgColor, txtColor, olColor, lbgColor, lbgColor2)
-	--Custom Gui
-	PotatoTab.TextLabel.Text = "PotatoMod"
-	PotatoTab.Visible = true
-	PotatoTab.MenuFrame.Size = UDim2.new(0,420,0,220)
-	ClosePotatoMod = Instance.new("TextButton")
-	ClosePotatoMod.Parent = PotatoTab.MenuFrame
-	ClosePotatoMod.Name = "ClosePotatoMod"
-	ClosePotatoMod.ZIndex = 3
-	ClosePotatoMod.BackgroundColor3 = lbgColor
-	ClosePotatoMod.BorderColor3 = olColor
-	ClosePotatoMod.Size = UDim2.new(0,80,0,20)
-	ClosePotatoMod.Position = UDim2.new(1,-84,0,4)
-	ClosePotatoMod.TextColor3 = txtColor
-	ClosePotatoMod.Text = "Exit PotatoMod"
-	ClosePotatoMod.Font = "SourceSans"
-	ClosePotatoMod.TextSize = 14
-	local PotatoModLogo = Instance.new("ImageLabel")
-	PotatoModLogo.Parent = PotatoTab.MenuFrame
-	PotatoModLogo.Name = "PotatoModLogo"
-	PotatoModLogo.Image = "rbxassetid://11830984146"
-	PotatoModLogo.Position = UDim2.new(0,10,0,10)
-	PotatoModLogo.Size = UDim2.new(0,174,0,200)
-	PotatoModLogo.BackgroundTransparency = 1
-	local CrisThanks=Instance.new("TextLabel")
-	CrisThanks.Parent = PotatoTab.MenuFrame
-	CrisThanks.Name = "CrisThanks"
-	CrisThanks.Size = UDim2.new(0,230,0,20)
-	CrisThanks.Position = UDim2.new(1,-234,1,-24)
-	CrisThanks.BackgroundTransparency = 1
-	CrisThanks.TextColor3 = lbgColor2
-	CrisThanks.TextSize = 14
-	CrisThanks.Font = "SourceSans"
-	CrisThanks.Text = "Big thanks to Cristiano for making this possible"
-	GuiEditor = Instance.new("Frame")
-	GuiEditor.Parent = PmGui
-	GuiEditor.Name = "GuiEditor"
-	GuiEditor.Size = UDim2.new(1,0,1,0)
-	GuiEditor.BackgroundTransparency = 1
-end
-
-
 --[[
     1 - instance
     2 - property
@@ -129,78 +88,169 @@ end
         2 - potato
     Register new object
 ]]
-local function registerStatic(instance, child, debug)
+
+
+
+local currentStatic -- Instance to apply property to
+
+-- I made these lowercase to type them easier
+local function static(instance, child, debug)
     debug = debug or false
     if type(instance) == "table" then instance = instance[1] end
-    if instance and instance:FindFirstChild(child) then 
-        local new = {instance[child],{}}
+    if instance and getNested(instance,child) then 
+        local new = {getNested(instance,child),{}}
         staticGuiList[#staticGuiList+1] = new
+        currentStatic = new
         return new
     else
         if not debug then
             warn("PotatoMod2: "..instance.Name.."."..child.. " is missing!")
             guiLayoutUnknown = true
+            currentStatic = nil
             return nil
         end
     end
 end
 
-local function registerProperty(instance, property, value, debug)
+local function regprop(property, value, instance, debug)
+    instance = instance or currentStatic
     debug = debug or false
-    if instance then
-        instance[2][property] = {instance[1][property],value}
-    else
+    local set, message = pcall(function()
+        if instance then
+            instance[2][property] = {instance[1][property],value}
+        else
+            if not debug then
+                guiLayoutUnknown = true
+                return nil
+            end
+        end
+    end)
+    if not set then
         if not debug then
+            warn("PotatoMod2: "..message)
             guiLayoutUnknown = true
             return nil
         end
     end
+    
 end
 
+-- ... used to allow setting static inside of function
+local function regfont()
+    regprop("TextColor3",theme.text)
+    regprop("Font",theme.font)
+end
 
+local function regdefault(...)
+    regprop("BackgroundColor3",theme.bg)
+    regprop("BorderColor3",theme.ol)
+    if currentStatic[1]:IsA("TextLabel") or currentStatic[1]:IsA("TextBox") or currentStatic[1]:IsA("TextButton") then
+        regfont()
+    end
+end
+
+local function staticdefault(instance, child, debug) -- Create a static with default properties
+    local newStatic = static(instance, child, debug)
+    regdefault()
+    return newStatic
+end
+
+local function regheader(...)
+    regprop("BackgroundColor3",theme.header)
+    regprop("BorderColor3",theme.ol)
+    regfont()
+end
+
+-- Custom GUI
+if not MenusBar:FindFirstChild("WindowButton") then handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs!") end
+local PotatoModGui = Instance.new("Frame")
+PotatoModGui.Name = "PotatoMod"
+
+
+--Properties
+--Static
+local Properties = staticdefault(Windows,"Properties")
+if Properties then
+    regheader(static(Properties,"WindowHeader"))
+    local ListOutline = staticdefault(Properties,"ListOutline")
+    if ListOutline then
+        local Header = staticdefault(ListOutline,"Header")
+        if Header then
+            local Frame = static(Header,"Frame")
+            if Frame then
+                regprop("BackgroundColor3",theme.ol)
+            end
+        end
+    end
+    local IdentityBackground = static(Properties,"IdentityBackground")
+    if IdentityBackground then
+        regprop("ImageColor3",theme.header)
+        local IdentityLabel = static(IdentityBackground,"IdentityLabel")
+        if IdentityLabel then
+            regfont()
+        end
+    end
+    local PropertiesScript = static(Properties,"PropertiesScript")
+    if PropertiesScript then
+        local EnumList = static(PropertiesScript,"EnumList")
+        if EnumList then
+            regprop("ImageTransparency",1)
+            regprop("BackgroundTransparency",0)
+            regprop("BackgroundColor3",theme.ol)
+            local ScrollingFrame = static(EnumList,"Frame.ScrollingFrame")
+            if ScrollingFrame then
+                regprop("BackgroundColor3",theme.bg)
+                local ListItem = static(ScrollingFrame,"ListItem")
+                if ListItem then
+                    regprop("BackgroundColor3",theme.bg)
+                    regfont()
+                    local TextLabel = static(ListItem,"TextLabel")
+                    if TextLabel then
+                        regfont()
+                    end
+                end
+            end
+        end
+        local PropertyBrickColorPalette = static(PropertiesScript,"PropertyBrickColorPalette")
+        if PropertyBrickColorPalette then
+            regprop("ImageTransparency",1)
+            regprop("BackgroundTransparency",0)
+            regprop("BorderColor3",theme.ol)
+            regprop("BackgroundColor3",theme.bg)
+            regprop("BorderSizePixel",1)
+        end
+    end
+end
 
 -- Toolbar
 -- Static
-local Toolbar = registerStatic(Topbar,"ToolBar")
+local Toolbar = static(Topbar,"ToolBar")
 if Toolbar then
     
 end
 
 -- TabBar
 -- Static
-local TabBar = registerStatic(StudioGui,"TabBar")
+local TabBar = staticdefault(StudioGui,"TabBar")
 if TabBar then
-    registerProperty(TabBar,"BackgroundColor3",curTheme.bg)
-    local BottomLine = registerStatic(TabBar,"BottomLine")
+    local BottomLine = static(TabBar,"BottomLine")
     if BottomLine then
-        registerProperty(BottomLine,"BackgroundColor3",curTheme.outline)
-        registerProperty(BottomLine,"BorderColor3",curTheme.outline)
+        regprop("BackgroundColor3",theme.ol)
+        regprop("BorderColor3",theme.ol)
     end
 end
 
 -- Output
 -- Static
-local Output = registerStatic(Windows,"Output")
+local Output = staticdefault(Windows,"Output")
 if Output then
-    registerProperty(Output,"BackgroundColor3",curTheme.bg)
-    registerProperty(Output,"BorderColor3",curTheme.outline)
-    local ListOutline = registerStatic(Output,"ListOutline")
-    if ListOutline then
-        registerProperty(ListOutline,"BackgroundColor3",curTheme.bg)
-        registerProperty(ListOutline,"BorderColor3",curTheme.outline)
-    end
-    local WindowHeader = registerStatic(Output,"WindowHeader")
-    if WindowHeader then
-        registerStatic(WindowHeader,"BackgroundColor3",curTheme.bgl_1)
-        registerStatic(WindowHeader,"BorderColor3",curTheme.outline)
-        registerStatic(WindowHeader,"TextColor3",curTheme.text)
-        registerStatic(WindowHeader,"Font",curTheme.font)
-    end
+    local ListOutline = staticdefault(Output,"ListOutline")
+    regheader(static(Output,"WindowHeader"))
 end
 
 -- BottomBar
 -- Static
-local BottomBar = registerStatic(StudioGui,"BottomBar")
+local BottomBar = static(StudioGui,"BottomBar")
 if BottomBar then
     
 end
@@ -216,12 +266,30 @@ local RENDER_STATE_POTATO = 2
 local function renderStatic(state)
     for k,v in pairs(staticGuiList) do
         for property,value in pairs(v[2]) do
-            v[1][property] = value[state]
+            local set, message = pcall(function() -- pcall as to not error if can't set property
+                if state == RENDER_STATE_DEFAULT then
+                    v[1][property] = value[state]
+                else
+                    v[1][property] = themes.current[value[state]]
+                end
+            end)
+            if not set then
+                if state ~= RENDER_STATE_DEFAULT then
+                    renderStatic(RENDER_STATE_DEFAULT)
+                    handleError("Render fault.\n"..message)
+                end
+            end
         end
     end
 end
+
+theme.bg = Color3.fromRGB(255,128,128)
 
 renderStatic(RENDER_STATE_POTATO)
 
 
 warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
+
+wait(2)
+
+renderStatic(RENDER_STATE_DEFAULT)

@@ -58,4 +58,4 @@ closeButton.MouseButton1Click:Connect(function()
 end)
 
 -- Call the function to populate the GUI with children of Workspace
-printChildrenWithIndentation(game.ReplicatedStorage,0, scrollFrame)
+printChildrenWithIndentation(game.Players.LocalPlayer.PlayerGui,0, scrollFrame)

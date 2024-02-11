@@ -2,7 +2,7 @@ import os
 import time
 import requests
 
-public_server_url = "https://retrodliver.nicepotato.repl.co"  # Replace with the actual public server URL
+public_server_url = "https://598ba40c-cde5-4529-8e20-4b0699df7746-00-1vkokei51fht2.riker.repl.co/"  # Replace with the actual public server URL
 
 filename = "v2.0.0.luau"
 
