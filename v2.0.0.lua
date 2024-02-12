@@ -20,6 +20,7 @@ local themes = {
         bg = Color3.fromRGB(40,40,40),
         ol = Color3.fromRGB(100,100,100),
         font = Enum.Font.SourceSans,
+        font_bold = Enum.Font.SourceSansBold,
         text = Color3.fromRGB(240,240,240),
         text_print = Color3.fromRGB(240,240,240),
         text_info = Color3.fromRGB(0,155,255),
@@ -36,14 +37,13 @@ local theme = {
     bg = "bg",
     ol = "ol",
     font = "font",
+    font_bold = "font_bold",
     text = "text",
     text_print = "text_print",
     text_info = "text_info",
     text_error = "text_error",
     text_warn = "text_warn"
 }
-
-
 
 -- PotatoInjector has no script property
 local debug = false
@@ -332,6 +332,8 @@ if not MenusBar:FindFirstChild("WindowButton") then handleError("Funny thing, th
 local PotatoModGui = Instance.new("Frame")
 PotatoModGui.Name = "PotatoMod"
 
+-- CodeEditorLocal
+
 -- Toolbox
 local Toolbox = newdefault(Windows,"Toolbox")
 if Toolbox then
@@ -405,21 +407,6 @@ if Toolbox then
         end
     end
 end
-
-----Toolbox
---Controls.Tabs.Inventory.BorderColor3 = olColor
---Controls.Tabs.Inventory.TextColor3 = txtColor
---Controls.Tabs.Inventory.Font = fontName
---Controls.Tabs.Search.BorderColor3 = olColor
---Controls.Tabs.Search.TextColor3 = txtColor
---Controls.Tabs.Search.Font = fontName
---Controls.InventoryControls.SortLabel.TextColor3 = txtColor
---Controls.InventoryControls.SortLabel.Font = fontName
---Controls.InventoryControls.SortLabel.DropdownButton.TextColor3 = txtColor
---Controls.InventoryControls.SortLabel.DropdownButton.Font = fontName
---Controls.InventoryControls.SortLabel.DropdownButton.BackgroundColor3 = bgColor
---Controls.InventoryControls.SortLabel.DropdownButton.BorderColor3 = olColor
---Controls.InventoryControls.SortLabel.DropdownButton.ImageButton.ImageColor3 = lbgColor2
 
 -- BasicObjects
 local BasicObjects = newdefault(Windows,"Basic Objects")
@@ -558,12 +545,26 @@ local function dynamicOutputHandlerConnect(instance,entry)
         if TextBox:IsA("TextBox") then
             for init,replace in pairs(outputColorReplace) do
                 if TextBox.TextColor3 == init then
+                    if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
+                        -- We can set this as bold font
+                        TextBox.Font = themes.current["font_bold"]
+                    else
+                        -- We can set this as normal font
+                        TextBox.Font = themes.current["font"]
+                    end
                     TextBox.TextColor3 = themes.current[replace]
                 end
             end
             local connection = TextBox:GetPropertyChangedSignal("TextColor3"):Connect(function()
                 for init,replace in pairs(outputColorReplace) do
                     if TextBox.TextColor3 == init then
+                        if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
+                            -- We can set this as bold font
+                            TextBox.Font = themes.current["font_bold"]
+                        else
+                            -- We can set this as normal font
+                            TextBox.Font = themes.current["font"]
+                        end
                         TextBox.TextColor3 = themes.current[replace]
                     end
                 end
@@ -590,6 +591,13 @@ local function dynamicOutputHandlerDisconnect(instance,entry)
         textEntry[2]:Disconnect()
         for init,replace in pairs(outputColorReplace) do
             if textEntry[1].TextColor3 == themes.current[replace] then
+                if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
+                    -- We can set this as bold font
+                    textEntry[1].Font = themes.current["font_bold"]
+                else
+                    -- We can set this as normal font
+                    textEntry[1].Font = themes.current["font"]
+                end
                 textEntry[1].TextColor3 = init
             end
         end
