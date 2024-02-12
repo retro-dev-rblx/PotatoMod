@@ -1,3 +1,8 @@
+-- PotatoMod v2.0.0 created by NicePotato (.nicepotato)
+-- Credits to Cristiano and Ayray for letting this project exist
+
+-- TODO remake dropdown arrow for theme (toolbox)
+
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
@@ -7,9 +12,6 @@ local StudioGui = PlayerGui.StudioGui-- The GUI of the studio
 local Windows = StudioGui.Windows -- The main windows of the studio
 local Topbar = StudioGui.Topbar
 local MenusBar = Topbar.MenusBar
-
-local Blue = Color3.fromRGB(0,0,255)
-local LightBlue = Color3.fromRGB(0,155,255)
 
 local themes = {
     dark = {
@@ -84,7 +86,7 @@ end
 
 --[[
     1 - instance
-    2 - property
+    2 - theme
         1 - default
         2 - potato
             [property]
@@ -95,17 +97,22 @@ end
             2 - disconnect function
             3 - arg table
             4 - connections
+    4 - property
+        1 - default
+        2 - potato
+            [property]
+                {initial, replace}
     Register new object
 ]]
 
 local currentInst -- Instance to apply property to
 
 -- I made these lowercase to type them easier
-local function regnew(instance, child, debug) -- Register a new instance to be modified
+local function newreg(instance, child, debug) -- Register a new instance to be modified
     debug = debug or false
     if type(instance) == "table" then instance = instance[1] end
     if instance and getNested(instance,child) then 
-        local new = {getNested(instance,child),{},{}} -- {instance, properties, dynamics}
+        local new = {getNested(instance,child),{},{},{}} -- {instance, themeProperties, dynamics, properties}
         instanceList[#instanceList+1] = new
         currentInst = new
         return new
@@ -119,12 +126,54 @@ local function regnew(instance, child, debug) -- Register a new instance to be m
     end
 end
 
-local function regprop(property, value, instance, debug) -- Register a static property change
+local function newself(instance,debug)
+    debug = debug or false
+    if instance then 
+        local new = {instance,{},{},{}} -- {instance, themeProperties, dynamics, properties}
+        instanceList[#instanceList+1] = new
+        currentInst = new
+        return new
+    else
+        if not debug then
+            warn("PotatoMod2: "..instance.Name.. " is missing!")
+            guiLayoutUnknown = true
+            currentInst = nil
+            return nil
+        end
+    end
+end
+
+local function regtheme(property, value, instance, debug) -- Register a static property theme change
+    -- This takes keys for the theme table
     instance = instance or currentInst
     debug = debug or false
     local set, message = pcall(function()
         if instance then
             instance[2][property] = {instance[1][property],value} -- {initial,replace}
+        else
+            if not debug then
+                guiLayoutUnknown = true
+                return nil
+            end
+        end
+    end)
+    if not set then
+        if not debug then
+            warn("PotatoMod2: "..message)
+            guiLayoutUnknown = true
+            return nil
+        end
+    end
+end
+
+local function regprop(property, value, instance, debug) -- Register a static property change
+    -- This is the exact same as theme change, but it gets rendered in another step
+    -- This takes any arbitrary value
+    instance = instance or currentInst
+    debug = debug or false
+    local set, message = pcall(function()
+        if instance then
+            instance[4][property] = {instance[1][property],value} -- {initial,replace}
         else
             if not debug then
                 guiLayoutUnknown = true
@@ -157,6 +206,40 @@ local function regdynamic(connectFunc, disconnectFunc, argtable, instance, debug
 
 end
 
+
+local function dynamicReplaceThemeConnect(instance,entry) -- replace all theme property [keys] with [value]
+    -- argtable
+        -- [property]
+            -- [original]
+                -- = replace
+    for property,values in pairs(entry[3]) do -- for all properties in argtable
+        for init,replace in pairs(values) do
+            if instance[property] == init then
+                instance[property] = themes.current[replace]
+            end
+            local connection = instance:GetPropertyChangedSignal(property):Connect(function()
+                -- Really hope they don't start fighting over each other for their wanted value! (please don't)
+                if instance[property] == init then
+                    instance[property] = themes.current[replace]
+                end
+            end)
+            entry[4][#entry[4]+1] = connection
+        end
+    end
+end
+
+local function dynamicReplaceThemeDisconnect(instance,entry) -- kill active replaces and reset to inital value
+    for _,connection in pairs(entry[4]) do -- for all connections
+        connection:Disconnect()
+    end
+    for property,values in pairs(entry[3]) do -- for all properties in argtable
+        for init,replace in pairs(values) do
+            if instance[property] == themes.current[replace] then -- if value has been replaced, restore it
+                instance[property] = init
+            end
+        end
+    end
+end
 
 local function dynamicReplacePropertyConnect(instance,entry) -- replace all property [keys] with [value]
     -- argtable
@@ -194,20 +277,28 @@ end
 
 -- ... used to allow setting static inside of function
 local function regfont(...) -- Register a default text change
-    regprop("TextColor3",theme.text)
-    regprop("Font",theme.font)
+    regtheme("TextColor3",theme.text)
+    regtheme("Font",theme.font)
 end
 
 local function regdefault(...) -- Register a default instance property change
-    regprop("BackgroundColor3",theme.bg)
-    regprop("BorderColor3",theme.ol)
+    regtheme("BackgroundColor3",theme.bg)
+    regtheme("BorderColor3",theme.ol)
     if currentInst[1]:IsA("TextLabel") or currentInst[1]:IsA("TextBox") or currentInst[1]:IsA("TextButton") then
         regfont()
     end
 end
 
+local function newdefaultself(instance, debug)
+    local newStatic = newself(instance, debug)
+    if newStatic then
+        regdefault()
+    end
+    return newStatic
+end
+
 local function newdefault(instance, child, debug) -- Register a new instance with default properties
-    local newStatic = regnew(instance, child, debug)
+    local newStatic = newreg(instance, child, debug)
     if newStatic then
         regdefault()
     end
@@ -219,11 +310,12 @@ local function regheader(...)
     -- default x hovered rbxassetid://13622964770
     -- mod x unhovered rbxassetid://16336560641
     -- mod x hovered rbxassetid://16336555516
-    regprop("BackgroundColor3",theme.header)
-    regprop("BorderColor3",theme.ol)
+    regtheme("BackgroundColor3",theme.header)
+    regtheme("BorderColor3",theme.ol)
     regfont()
-    local CloseButton = regnew(currentInst,"CloseButton")
+    local CloseButton = newreg(currentInst,"CloseButton")
     if CloseButton then
+        regtheme("ImageColor3",theme.text)
         regdynamic(dynamicReplacePropertyConnect,
             dynamicReplacePropertyDisconnect,
             {
@@ -240,63 +332,197 @@ if not MenusBar:FindFirstChild("WindowButton") then handleError("Funny thing, th
 local PotatoModGui = Instance.new("Frame")
 PotatoModGui.Name = "PotatoMod"
 
+-- Toolbox
+local Toolbox = newdefault(Windows,"Toolbox")
+if Toolbox then
+    regheader(newreg(Toolbox,"WindowHeader"))
+    local EmbedOutline = newdefault(Toolbox,"EmbedOutline")
+    if EmbedOutline then
+        local List = newdefault(EmbedOutline,"ListFrame.List")
+        if List then
+            regprop("BackgroundTransparency",0)
+            for _,child in pairs(List[1]:GetChildren()) do
+                if child:isA("Frame") then
+                    local Model = newdefaultself(child)
+                    if Model then
+                        newdefault(Model,"TextLabel")
+                        newdefault(Model,"ImageLabel")
+                    end
+                end
+            end
+        end
+        local Controls = newreg(EmbedOutline,"Controls")
+        if Controls then
+            regprop("BackgroundTransparency",1)
+            local SearchControls = newreg(Controls,"SearchControls")
+            if SearchControls then
+                local SearchBackground = newreg(SearchControls,"SearchBackground")
+                if SearchBackground then
+                    regprop("BackgroundTransparency",1)
+                end
+                newdefault(SearchControls,"SearchBar")
+            end
+            local DisplayLabel = newreg(SearchControls,"DisplayLabel")
+            if DisplayLabel then
+                local DropdownButton = newdefault(DisplayLabel,"DropdownButton")
+                if DropdownButton then
+                    -- TODO remake dropdown arrow for theme
+                end
+                local DropdownList = newdefault(DisplayLabel,"DropdownList")
+                if DropdownList then
+                    for _,child in pairs(DropdownList[1]:GetChildren()) do
+                        if child:isA("TextButton") then
+                            newdefaultself(child)
+                        end
+                    end
+                end
+            end
+            local Tabs = newreg(Controls,"Tabs")
+            if Tabs then
+                regtheme("BackgroundColor3",theme.header)
+                regtheme("BorderColor3",theme.ol)
+                local replaceColors = {
+                    ["BackgroundColor3"] = {
+                        [Color3.fromRGB(240,240,240)] = theme.bg,
+                        [Color3.fromRGB(201,201,201)] = theme.header
+                    }
+                }
+                local Inventory = newreg(Tabs,"Inventory")
+                if Inventory then
+                    regfont()
+                    regdynamic(dynamicReplaceThemeConnect,
+                        dynamicReplaceThemeDisconnect,
+                        replaceColors)
+                end
+                local Search = newreg(Tabs,"Search")
+                if Search then
+                    regfont()
+                    regdynamic(dynamicReplaceThemeConnect,
+                        dynamicReplaceThemeDisconnect,
+                        replaceColors)
+                end
+            end
+        end
+    end
+end
+
+----Toolbox
+--Controls.Tabs.Inventory.BorderColor3 = olColor
+--Controls.Tabs.Inventory.TextColor3 = txtColor
+--Controls.Tabs.Inventory.Font = fontName
+--Controls.Tabs.Search.BorderColor3 = olColor
+--Controls.Tabs.Search.TextColor3 = txtColor
+--Controls.Tabs.Search.Font = fontName
+--Controls.InventoryControls.SortLabel.TextColor3 = txtColor
+--Controls.InventoryControls.SortLabel.Font = fontName
+--Controls.InventoryControls.SortLabel.DropdownButton.TextColor3 = txtColor
+--Controls.InventoryControls.SortLabel.DropdownButton.Font = fontName
+--Controls.InventoryControls.SortLabel.DropdownButton.BackgroundColor3 = bgColor
+--Controls.InventoryControls.SortLabel.DropdownButton.BorderColor3 = olColor
+--Controls.InventoryControls.SortLabel.DropdownButton.ImageButton.ImageColor3 = lbgColor2
+
+-- BasicObjects
+local BasicObjects = newdefault(Windows,"Basic Objects")
+if BasicObjects then
+    regheader(newreg(BasicObjects,"WindowHeader"))
+    local ListOutline = newdefault(BasicObjects,"ListOutline")
+    if ListOutline then
+        local List = newdefault(ListOutline,"List")
+        if List then
+            regtheme("BackgroundTransparency",0)
+        end
+    end
+    local SearchBar = newreg(BasicObjects,"SearchBar")
+    if SearchBar then
+        regprop("ImageTransparency",1)
+        regtheme("BackgroundColor3",theme.bg)
+        regtheme("BorderColor3",theme.ol)
+    end
+    local ItemTemplate = regdefault(BasicObjects,"BasicObjectsScript.ItemTemplate")
+    newdefault(BasicObjects,"SelectText")
+end
+
+----Basic Objects
+--BasicObjects.BasicObjectsScript.ItemTemplate.BackgroundColor3 = bgColor
+--BasicObjects.BasicObjectsScript.ItemTemplate.BorderColor3 = olColor
+
+-- Explorer
+local Explorer = newdefault(Windows,"Explorer")
+if Explorer then
+    regheader(newreg(Explorer,"WindowHeader"))
+    local ListOutline = newdefault(Explorer,"ListOutline")
+    if ListOutline then
+        
+    end
+end
+
+--Explorer.ListOutline.BackgroundColor3 = bgColor
+--Explorer.ListOutline.BorderColor3 = olColor
 
 --Properties
 local Properties = newdefault(Windows,"Properties")
 if Properties then
-    regheader(regnew(Properties,"WindowHeader"))
+    regheader(newreg(Properties,"WindowHeader"))
     local ListOutline = newdefault(Properties,"ListOutline")
     if ListOutline then
         local Header = newdefault(ListOutline,"Header")
         if Header then
-            local Frame = regnew(Header,"Frame")
+            local Frame = newreg(Header,"Frame")
             if Frame then
-                regprop("BackgroundColor3",theme.ol)
+                regtheme("BackgroundColor3",theme.ol)
             end
         end
+        local PropertyList = newdefault(ListOutline,"PropertyList")
+        if PropertyList then
+            
+        end
+        local LeftOutlineOverHeader = newreg(ListOutline,"LeftOutlineOverHeader")
+        if LeftOutlineOverHeader then
+            regtheme("BackgroundColor3",theme.ol)
+        end
     end
-    local IdentityBackground = regnew(Properties,"IdentityBackground")
+    local IdentityBackground = newreg(Properties,"IdentityBackground")
     if IdentityBackground then
-        regprop("ImageColor3",theme.header)
-        local IdentityLabel = regnew(IdentityBackground,"IdentityLabel")
+        regtheme("ImageColor3",theme.header)
+        local IdentityLabel = newreg(IdentityBackground,"IdentityLabel")
         if IdentityLabel then
             regfont()
         end
     end
-    local PropertiesScript = regnew(Properties,"PropertiesScript")
+    local PropertiesScript = newreg(Properties,"PropertiesScript")
     if PropertiesScript then
-        local EnumList = regnew(PropertiesScript,"EnumList")
+        local EnumList = newreg(PropertiesScript,"EnumList")
         if EnumList then
             regprop("ImageTransparency",1)
             regprop("BackgroundTransparency",0)
-            regprop("BackgroundColor3",theme.ol)
-            local ScrollingFrame = regnew(EnumList,"Frame.ScrollingFrame")
+            regtheme("BackgroundColor3",theme.ol)
+            local ScrollingFrame = newreg(EnumList,"Frame.ScrollingFrame")
             if ScrollingFrame then
-                regprop("BackgroundColor3",theme.bg)
-                local ListItem = regnew(ScrollingFrame,"ListItem")
+                regtheme("BackgroundColor3",theme.bg)
+                local ListItem = newreg(ScrollingFrame,"ListItem")
                 if ListItem then
-                    regprop("BackgroundColor3",theme.bg)
+                    regtheme("BackgroundColor3",theme.bg)
                     regfont()
-                    local TextLabel = regnew(ListItem,"TextLabel")
+                    local TextLabel = newreg(ListItem,"TextLabel")
                     if TextLabel then
                         regfont()
                     end
                 end
             end
         end
-        local PropertyBrickColorPalette = regnew(PropertiesScript,"PropertyBrickColorPalette")
+        local PropertyBrickColorPalette = newreg(PropertiesScript,"PropertyBrickColorPalette")
         if PropertyBrickColorPalette then
             regprop("ImageTransparency",1)
             regprop("BackgroundTransparency",0)
-            regprop("BorderColor3",theme.ol)
-            regprop("BackgroundColor3",theme.bg)
+            regtheme("BorderColor3",theme.ol)
+            regtheme("BackgroundColor3",theme.bg)
             regprop("BorderSizePixel",1)
         end
     end
 end
 
 -- Toolbar
-local Toolbar = regnew(Topbar,"ToolBar")
+local Toolbar = newreg(Topbar,"ToolBar")
 if Toolbar then
     
 end
@@ -304,10 +530,10 @@ end
 -- TabBar
 local TabBar = newdefault(StudioGui,"TabBar")
 if TabBar then
-    local BottomLine = regnew(TabBar,"BottomLine")
+    local BottomLine = newreg(TabBar,"BottomLine")
     if BottomLine then
-        regprop("BackgroundColor3",theme.ol)
-        regprop("BorderColor3",theme.ol)
+        regtheme("BackgroundColor3",theme.ol)
+        regtheme("BorderColor3",theme.ol)
     end
 end
 
@@ -372,21 +598,25 @@ end
 
 local Output = newdefault(Windows,"Output")
 if Output then
+    regheader(newreg(Output,"WindowHeader"))
     local ListOutline = newdefault(Output,"ListOutline")
     if ListOutline then
-        local List = regnew(ListOutline,"List")
+        local List = newreg(ListOutline,"List")
         if List then
             regdynamic(dynamicOutputHandlerConnect,
                 dynamicOutputHandlerDisconnect)
         end
     end
-    regheader(regnew(Output,"WindowHeader"))
 end
 
 -- BottomBar
-local BottomBar = regnew(StudioGui,"BottomBar")
+local BottomBar = newdefault(StudioGui,"BottomBar")
 if BottomBar then
-    --print(BottomBar[1].ClassName)
+    newdefault(BottomBar,"Diagnostics")
+    local TextLabel = newdefault(BottomBar,"TextLabel")
+    if TextLabel then
+        regprop("BackgroundTransparency",0)
+    end
 end
 
 
@@ -397,49 +627,54 @@ end
 local RENDER_STATE_DEFAULT = 1
 local RENDER_STATE_POTATO = 2
 
-local function renderRegnew(state)
+local function render(state)
     for k,v in pairs(instanceList) do
-        for property,value in pairs(v[2]) do -- Static properties
-            local set, message = pcall(function() -- pcall as to not stop after error if can't set property
+        local set, message    
+        set, message = pcall(function() -- pcall as to not stop after error if can't set property
+            for property,value in pairs(v[2]) do -- Static theme changes
                 if state == RENDER_STATE_DEFAULT then
                     v[1][property] = value[state]
                 else
                     v[1][property] = themes.current[value[state]]
                 end
-            end)
-            if not set then
-                if state ~= RENDER_STATE_DEFAULT then
-                    renderRegnew(RENDER_STATE_DEFAULT)
-                    handleError("Error during render stage.\n"..message)
-                end
+            end
+        end)
+        set, message = pcall(function() -- pcall as to not stop after error if can't set property
+            for property,value in pairs(v[4]) do -- Static property changes
+                v[1][property] = value[state]
+            end
+        end)
+        if not set then
+            if state ~= RENDER_STATE_DEFAULT then
+                render(RENDER_STATE_DEFAULT)
+                handleError("Error during render stage.\n"..message)
             end
         end
-        for _,entry in pairs(v[3]) do -- Dynamic properties
-            local set, message = pcall(function() -- pcall as to not stop after error
+        set, message = pcall(function() -- pcall as to not stop after error
+            for _,entry in pairs(v[3]) do -- Dynamic properties
                 if state == RENDER_STATE_DEFAULT then
                     entry[2](v[1],entry) -- Disconnect
                 else
                     entry[2](v[1],entry) -- Disconnect
                     entry[1](v[1],entry) -- Connect
                 end
-            end)
-            if not set then
-                if state ~= RENDER_STATE_DEFAULT then
-                    renderRegnew(RENDER_STATE_DEFAULT)
-                    handleError("Error during hook stage.\n"..message)
-                end
+            end
+        end)
+        if not set then
+            if state ~= RENDER_STATE_DEFAULT then
+                render(RENDER_STATE_DEFAULT)
+                handleError("Error during hook stage.\n"..message)
             end
         end
+        
     end
 end
 
-theme.bg = Color3.fromRGB(255,128,128)
 
-renderRegnew(RENDER_STATE_POTATO)
-
+render(RENDER_STATE_POTATO)
 
 warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
 
 task.wait(2)
 
-renderRegnew(RENDER_STATE_DEFAULT)
+render(RENDER_STATE_DEFAULT)
