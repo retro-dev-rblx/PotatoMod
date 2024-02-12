@@ -1,5 +1,5 @@
 *.lua
 *.luau
 *.py
-!v2.0.0.luau
-!RELEASE.luau
+!v2.0.0.lua
+!RELEASE.lua
