@@ -334,10 +334,14 @@ PotatoModGui.Name = "PotatoMod"
 
 -- CodeEditorLocal
 
+-- TitleBar
+
+
 -- Toolbox
 local Toolbox = newdefault(Windows,"Toolbox")
 if Toolbox then
     regheader(newreg(Toolbox,"WindowHeader"))
+    
     local EmbedOutline = newdefault(Toolbox,"EmbedOutline")
     if EmbedOutline then
         local List = newdefault(EmbedOutline,"ListFrame.List")
@@ -353,9 +357,31 @@ if Toolbox then
                 end
             end
         end
-        local Controls = newreg(EmbedOutline,"Controls")
+        local Controls = newdefault(EmbedOutline,"Controls")
         if Controls then
-            regprop("BackgroundTransparency",1)
+            local InventoryControls = newdefault(Controls,"InventoryControls")
+            if InventoryControls then
+                local Border = newreg(InventoryControls,"Border")
+                if Border then
+                    regtheme("BackgroundColor3",theme.ol)
+                    regtheme("BorderColor3",theme.ol)
+                end
+                local SortLabel = newdefault(InventoryControls,"SortLabel")
+                if SortLabel then
+                    local DropdownButton = newdefault(SortLabel,"DropdownButton")
+                    if DropdownButton then
+                        -- TODO remake dropdown arrow for theme
+                    end
+                    local DropdownList = newdefault(SortLabel,"DropdownList")
+                    if DropdownList then
+                        for _,child in pairs(DropdownList[1]:GetChildren()) do
+                            if child:isA("TextButton") then
+                                newdefaultself(child)
+                            end
+                        end
+                    end
+                end
+            end
             local SearchControls = newreg(Controls,"SearchControls")
             if SearchControls then
                 local SearchBackground = newreg(SearchControls,"SearchBackground")
@@ -363,22 +389,28 @@ if Toolbox then
                     regprop("BackgroundTransparency",1)
                 end
                 newdefault(SearchControls,"SearchBar")
-            end
-            local DisplayLabel = newreg(SearchControls,"DisplayLabel")
-            if DisplayLabel then
-                local DropdownButton = newdefault(DisplayLabel,"DropdownButton")
-                if DropdownButton then
-                    -- TODO remake dropdown arrow for theme
+                local Border = newreg(InventoryControls,"Border")
+                if Border then
+                    regtheme("BackgroundColor3",theme.ol)
+                    regtheme("BorderColor3",theme.ol)
                 end
-                local DropdownList = newdefault(DisplayLabel,"DropdownList")
-                if DropdownList then
-                    for _,child in pairs(DropdownList[1]:GetChildren()) do
-                        if child:isA("TextButton") then
-                            newdefaultself(child)
+                local DisplayLabel = newreg(SearchControls,"DisplayLabel")
+                if DisplayLabel then
+                    local DropdownButton = newdefault(DisplayLabel,"DropdownButton")
+                    if DropdownButton then
+                        -- TODO remake dropdown arrow for theme
+                    end
+                    local DropdownList = newdefault(DisplayLabel,"DropdownList")
+                    if DropdownList then
+                        for _,child in pairs(DropdownList[1]:GetChildren()) do
+                            if child:isA("TextButton") then
+                                newdefaultself(child)
+                            end
                         end
                     end
                 end
             end
+            
             local Tabs = newreg(Controls,"Tabs")
             if Tabs then
                 regtheme("BackgroundColor3",theme.header)
@@ -391,6 +423,7 @@ if Toolbox then
                 }
                 local Inventory = newreg(Tabs,"Inventory")
                 if Inventory then
+                    regtheme("BorderColor3",theme.ol)
                     regfont()
                     regdynamic(dynamicReplaceThemeConnect,
                         dynamicReplaceThemeDisconnect,
@@ -398,6 +431,7 @@ if Toolbox then
                 end
                 local Search = newreg(Tabs,"Search")
                 if Search then
+                    regtheme("BorderColor3",theme.ol)
                     regfont()
                     regdynamic(dynamicReplaceThemeConnect,
                         dynamicReplaceThemeDisconnect,
@@ -524,6 +558,33 @@ if TabBar then
     end
 end
 
+-- Topbar
+local Topbar = newreg(StudioGui,"Topbar")
+if Topbar then
+    local TitleBar = newreg(Topbar,"TitleBar")
+    if TitleBar then
+        regtheme("BackgroundColor3",theme.header)
+        local UIGradient = newreg(TitleBar,"UIGradient")
+        if UIGradient then
+            regprop("Enabled", false)
+        end
+        local TextLabel = newreg(TitleBar,"TextLabel")
+        if TextLabel then
+            regfont()
+        end
+    end
+end
+
+-- BottomBar
+local BottomBar = newdefault(StudioGui,"BottomBar")
+if BottomBar then
+    newdefault(BottomBar,"Diagnostics")
+    local TextLabel = newdefault(BottomBar,"TextLabel")
+    if TextLabel then
+        regprop("BackgroundTransparency",0)
+    end
+end
+
 -- Output
 local outputColorReplace = {
     [Color3.fromRGB(0,0,0)] = theme.text_print,
@@ -614,16 +675,6 @@ if Output then
             regdynamic(dynamicOutputHandlerConnect,
                 dynamicOutputHandlerDisconnect)
         end
-    end
-end
-
--- BottomBar
-local BottomBar = newdefault(StudioGui,"BottomBar")
-if BottomBar then
-    newdefault(BottomBar,"Diagnostics")
-    local TextLabel = newdefault(BottomBar,"TextLabel")
-    if TextLabel then
-        regprop("BackgroundTransparency",0)
     end
 end
 
