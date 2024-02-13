@@ -15,8 +15,19 @@ local MenusBar = Topbar.MenusBar
 
 local themes = {
     dark = {
+        header = Color3.fromRGB(60,60,60),
+        bg = Color3.fromRGB(46,46,46),
+        ol = Color3.fromRGB(60,60,60),
+        font = Enum.Font.SourceSans,
+        font_bold = Enum.Font.SourceSansBold,
+        text = Color3.fromRGB(240,240,240),
+        text_print = Color3.fromRGB(240,240,240),
+        text_info = Color3.fromRGB(0,155,255),
+        text_error = Color3.fromRGB(255,0,0),
+        text_warn = Color3.fromRGB(255, 128, 0)
+    },
+    classic = {
         header = Color3.fromRGB(80,80,80),
-        bgl_2 = Color3.fromRGB(120,120,120),
         bg = Color3.fromRGB(40,40,40),
         ol = Color3.fromRGB(100,100,100),
         font = Enum.Font.SourceSans,
@@ -33,7 +44,6 @@ themes["current"] = themes.dark
 
 local theme = {
     header = "header",
-    bgl_2 = "bgl_2",
     bg = "bg",
     ol = "ol",
     font = "font",
@@ -542,11 +552,7 @@ if Properties then
     end
 end
 
--- Toolbar
-local Toolbar = newreg(Topbar,"ToolBar")
-if Toolbar then
-    
-end
+
 
 -- TabBar
 local TabBar = newdefault(StudioGui,"TabBar")
@@ -561,9 +567,10 @@ end
 -- Topbar
 local Topbar = newreg(StudioGui,"Topbar")
 if Topbar then
+    -- TitleBar
     local TitleBar = newreg(Topbar,"TitleBar")
     if TitleBar then
-        regtheme("BackgroundColor3",theme.header)
+        regtheme("BackgroundColor3",theme.bg)
         local UIGradient = newreg(TitleBar,"UIGradient")
         if UIGradient then
             regprop("Enabled", false)
@@ -571,6 +578,96 @@ if Topbar then
         local TextLabel = newreg(TitleBar,"TextLabel")
         if TextLabel then
             regfont()
+        end
+    end
+
+    -- Toolbar
+    local Toolbar = newdefault(Topbar,"ToolBar")
+    if Toolbar then
+        regprop("ImageTransparency",1)
+        local PropertyBrickColorPalette = newreg(Toolbar,"Tools.Color.ColorPaletteTemplate")
+        if PropertyBrickColorPalette then
+            regprop("ImageTransparency",1)
+            regprop("BackgroundTransparency",0)
+            regtheme("BorderColor3",theme.ol)
+            regtheme("BackgroundColor3",theme.bg)
+            regprop("BorderSizePixel",1)
+        end
+        for _,child in pairs(Toolbar[1]:GetChildren()) do
+            if child:IsA("ImageLabel") then
+                local ImageLabel = newdefaultself(child)
+                if ImageLabel then
+                    regprop("ImageTransparency",1)
+                    for _,child in pairs(child:GetChildren()) do
+                        if child:IsA("Frame") then
+                            newdefaultself(child)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local MenusBar = newreg(Topbar,"MenusBar")
+    if MenusBar then
+        regtheme("BackgroundColor3",theme.header)
+        regprop("BackgroundTransparency",0)
+        regprop("ImageTransparency",1)
+        for _,child in pairs(MenusBar[1]:GetChildren()) do
+            if child:IsA("TextButton") then
+                local TextButton = newself(child)
+                if TextButton then
+                    regprop("BackgroundTransparency",0)
+                    regtheme("BackgroundColor3",theme.header)
+                    local TextLabel = newreg(TextButton,"TextLabel")
+                    if TextLabel then
+                        regfont()
+                        regtheme("BackgroundColor3",theme.header)
+                        regtheme("BorderColor3",theme.ol)
+                    end
+                    local Background = newreg(TextButton,"Background")
+                    if Background then
+                        regprop("BackgroundTransparency",0)
+                        regprop("ImageTransparency",1)
+                        regtheme("BackgroundColor3",theme.bg)
+                        regtheme("BorderColor3",theme.ol)
+                    end
+                    if TextButton[1]:FindFirstChild("MenuFrame") then
+                        local Background = newdefault(TextButton,"MenuFrame.Background")
+                        if Background then
+                            regprop("BackgroundTransparency",0)
+                            regprop("BorderSizePixel",1)
+                            if Background[1]:IsA("ImageLabel") then
+                                regprop("ImageTransparency",1)
+                            end
+                            for _,desc in pairs(Background[1]:GetDescendants()) do
+                                if desc:IsA("TextButton") or desc:IsA("TextLabel") or desc:IsA("Frame") then
+                                    newdefaultself(desc)
+                                end
+                                
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local PluginBar = newreg(Topbar,"PluginBar")
+    if PluginBar then
+        regtheme("BackgroundColor3",theme.header)
+        regprop("BackgroundTransparency",0)
+        regprop("ImageTransparency",1)
+        for k,v in pairs(currentInst[1]:GetChildren()) do print(k,v) end
+        for _,child in pairs(PluginBar[1]:GetChildren()) do
+            if child:IsA("ImageLabel") then
+                local PluginGroup = newself(child)
+                if PluginGroup then
+                    regtheme("BackgroundColor3",theme.header)
+                    regprop("ImageTransparency",1)
+                    regprop("BackgroundTransparency",0)
+                end
+            end
         end
     end
 end
@@ -734,6 +831,6 @@ render(RENDER_STATE_POTATO)
 
 warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
 
-task.wait(2)
+task.wait(5)
 
 render(RENDER_STATE_DEFAULT)
