@@ -3,8 +3,11 @@
 
 -- TODO remake dropdown arrow for theme (toolbox)
 
-local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+
+local GetSettings = ReplicatedStorage.RemoteFunctions.GetPotatoModSettings
+local SetSettings = ReplicatedStorage.RemoteEvents.SetPotatoModSettings
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer.PlayerGui
@@ -40,8 +43,6 @@ local themes = {
     }
 }
 
-themes["current"] = themes.dark
-
 local theme = {
     header = "header",
     bg = "bg",
@@ -56,8 +57,13 @@ local theme = {
 }
 
 -- PotatoInjector has no script property
-local debug = false
-if not script then debug = true end
+local maindebug = false
+if not script then
+    warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
+    maindebug = true
+else
+    task.wait(1) -- Wait for studio to get ready
+end
 
 local instanceList = {}
 
@@ -93,6 +99,50 @@ local function getNested(obj, children, debug)
     end
     return obj
 end
+
+-- Handle Settings
+local Settings = GetSettings:InvokeServer()
+
+local function printTable(table,depth, key)
+    depth = depth or 1
+    if key then
+        print(string.rep("\t",depth-1).."["..tostring(key).."] = ".."{")
+    else
+        print(string.rep("\t",depth-1).."{")
+    end
+    for k,v in pairs(table) do
+        if type(v) == "table" then
+            printTable(v,depth+1,k)
+        else
+            print(string.rep("\t",depth).."["..tostring(k).."] = "..tostring(v))
+        end
+    end
+    print(string.rep("\t",depth-1).."}")
+end
+
+printTable(Settings)
+
+local defaultSettings = {
+    version = 1,
+    toggles = {
+        autoLaunch = false,
+        enableTheme = true
+    },
+    themedata = {
+        current = "dark",
+        customTheme = {}
+    }
+}
+
+for k,v in pairs(themes.dark) do
+    defaultSettings.themedata.customTheme[k] = v
+end
+
+Settings = defaultSettings
+
+themes["current"] = themes[Settings.themedata.current]
+
+SetSettings:FireServer(defaultSettings)
 
 --[[
     1 - instance
@@ -336,11 +386,6 @@ local function regheader(...)
             })
     end
 end
-
--- Custom GUI
-if not MenusBar:FindFirstChild("WindowButton") then handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs!") end
-local PotatoModGui = Instance.new("Frame")
-PotatoModGui.Name = "PotatoMod"
 
 -- CodeEditorLocal
 
@@ -643,8 +688,7 @@ if Topbar then
                             for _,desc in pairs(Background[1]:GetDescendants()) do
                                 if desc:IsA("TextButton") or desc:IsA("TextLabel") or desc:IsA("Frame") then
                                     newdefaultself(desc)
-                                end
-                                
+                                end                               
                             end
                         end
                     end
@@ -658,7 +702,6 @@ if Topbar then
         regtheme("BackgroundColor3",theme.header)
         regprop("BackgroundTransparency",0)
         regprop("ImageTransparency",1)
-        for k,v in pairs(currentInst[1]:GetChildren()) do print(k,v) end
         for _,child in pairs(PluginBar[1]:GetChildren()) do
             if child:IsA("ImageLabel") then
                 local PluginGroup = newself(child)
@@ -690,7 +733,7 @@ local outputColorReplace = {
     [Color3.fromRGB(255,0,0)] = theme.text_error
 }
 
-local function dynamicOutputHandlerConnect(instance,entry)
+local function dynamicOutputHandlerConnect(instance, entry)
     -- entry
         -- 4 - list connection (not table)
         -- 5 - TextBox entry table
@@ -741,7 +784,7 @@ local function dynamicOutputHandlerConnect(instance,entry)
     entry[4] = connection
 end
 
-local function dynamicOutputHandlerDisconnect(instance,entry)
+local function dynamicOutputHandlerDisconnect(instance, entry)
     if not entry[5] then return end -- If we have never connected, no need to disconnect
                                     -- entry 5 is the TextBox entry table
     entry[4]:Disconnect() -- Disconnect if connected
@@ -774,6 +817,49 @@ if Output then
         end
     end
 end
+
+
+
+-- PotatoMod Gui
+local PotatoTab = MenusBar:FindFirstChild("WindowButton")
+if PotatoTab then
+    PotatoTab = newself(PotatoTab)
+    regprop("")
+    regprop("BackgroundTransparency",0)
+    regtheme("BackgroundColor3",theme.header)
+    local TextLabel = newreg(PotatoTab,"TextLabel")
+    if TextLabel then
+        TextLabel[1].Text = "PotatoMod"
+        regfont()
+        regtheme("BackgroundColor3",theme.header)
+        regtheme("BorderColor3",theme.ol)
+    end
+    local Background = newreg(PotatoTab,"Background")
+    if Background then
+        regprop("BackgroundTransparency",0)
+        regprop("ImageTransparency",1)
+        regtheme("BackgroundColor3",theme.bg)
+        regtheme("BorderColor3",theme.ol)
+    end
+    if PotatoTab[1]:FindFirstChild("MenuFrame") then
+        local Background = newdefault(PotatoTab,"MenuFrame.Background")
+        if Background then
+            regprop("BackgroundTransparency",0)
+            regprop("BorderSizePixel",1)
+            if Background[1]:IsA("ImageLabel") then
+                regprop("ImageTransparency",1)
+            end
+            for _,desc in pairs(Background[1]:GetDescendants()) do
+                if desc:IsA("TextButton") or desc:IsA("TextLabel") or desc:IsA("Frame") then
+                    newdefaultself(desc)
+                end                               
+            end
+        end
+    end
+else
+    handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs! (this is not good)")
+end
+
 
 
 if guiLayoutUnknown == true then
@@ -826,11 +912,41 @@ local function render(state)
     end
 end
 
+local enabled = false
 
-render(RENDER_STATE_POTATO)
+local function disablePotatoMod()
+    render(RENDER_STATE_DEFAULT)
+    SetSettings:FireServer(Settings)
+    PotatoTab.Visible = false
+    enabled = false
+    warn("PotatoMod2 disabled.")
+end
 
-warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
+local function enablePotatoMod()
+    enabled = true
+    if Settings.toggles.enableTheme then
+        render(RENDER_STATE_POTATO)
+    end
+    PotatoTab.Visible = true
+    warn("PotatoMod2 loaded.")
+end
 
-task.wait(5)
+if script then -- Real PotatoMod, do startup stuffs
+    local EnableBind = Instance.new("BindableEvent")
+    EnableBind.Parent = script
+    EnableBind.Event:Connect(function()
+        if enabled then
+            warn("PotatoMod2 is already loaded.")
+        else
+            enablePotatoMod()
+        end
+    end)
+end
 
-render(RENDER_STATE_DEFAULT)
+if Settings.toggles.autoLaunch or maindebug then
+    enablePotatoMod()
+    if maindebug then
+        task.wait(5)
+        disablePotatoMod()
+    end
+end
