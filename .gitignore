@@ -1,5 +1,6 @@
 *.lua
 *.luau
 *.py
+*.bat
 !v2.0.0.lua
 !RELEASE.lua

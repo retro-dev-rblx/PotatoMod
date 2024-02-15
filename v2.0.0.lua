@@ -70,7 +70,7 @@ local instanceList = {}
 local guiLayoutUnknown = false -- Has the gui been changed/updated?
 
 local function handleError(errorString)
-    error("\nPotatoMod2 has died (oh no)!\nError: "..errorString.."\nPlease report this to NicePotato (.nicepotato)")
+    error("\nPotatoMod2 has crashed (oh no)!\nError: "..errorString.."\nPlease report this to NicePotato (.nicepotato)")
     print("Challenge Complete: How did we get here?") -- this should not run
 end
 
@@ -101,17 +101,93 @@ local function getNested(obj, children, debug)
 end
 
 -- Handle Settings
-local Settings = GetSettings:InvokeServer()
+
+local function serialize(data)
+    if typeof(data) == "Color3" then
+        return {
+            SerializedType = "Color3",
+            r = data.r,
+            g = data.g,
+            b = data.b
+        }
+    end
+    if typeof(data) == "EnumItem" then
+        return data.Value
+    end
+    return data -- Data does not need to be serialized
+end
+
+local function deserialize(data)
+    if type(data) == "table" then
+        local dataType = data["SerializedType"]
+        if dataType then -- Is this data serialized?
+            if dataType == "Color3" then
+                return Color3.new(data.r,data.g,data.b)
+            end
+        else
+            return data -- Table is not serialized data
+        end
+    else
+        return data -- Data is not serialized data
+    end
+end
+
+local function serializeTable(inTable,recurse)
+    recurse = recurse or 0
+    if recurse >= 1000 then
+        warn("Warning: Table serializer overflow! Data may be corrupted.")
+        return
+    end
+    local outTable = {}
+    for k,v in pairs(inTable) do
+        k = serialize(k)
+        v = serialize(v)
+        if type(k) == "table" then
+            k = serializeTable(k,recurse+1)
+        end
+        if type(v) == "table" then
+            v = serializeTable(v,recurse+1)
+        end
+        outTable[k] = v
+    end
+    return outTable
+end
+
+local function deserializeTable(inTable,recurse)
+    recurse = recurse or 0
+    if recurse >= 1000 then
+        warn("Warning: Table deserializer overflow! Data may be corrupted.")
+        return
+    end
+    local outTable = {}
+    for k,v in pairs(inTable) do
+        k = deserialize(k) -- Key may be serialized data
+        v = deserialize(v) -- Value may be serialized data
+        if type(k) == "table" then
+            k = deserializeTable(k,recurse+1)
+        end
+        if type(v) == "table" then
+            v = deserializeTable(v,recurse+1)
+        end
+        outTable[k] = v
+    end
+    return outTable
+end
+
+local Settings = deserializeTable(GetSettings:InvokeServer())
 
 local function printTable(table,depth, key)
     depth = depth or 1
+    if typeof(table) == "Instance" then
+        table = table:GetChildren()
+    end
     if key then
         print(string.rep("\t",depth-1).."["..tostring(key).."] = ".."{")
     else
         print(string.rep("\t",depth-1).."{")
     end
     for k,v in pairs(table) do
-        if type(v) == "table" then
+        if type(v) == "table" or typeof(table) == "Instance" then
             printTable(v,depth+1,k)
         else
             print(string.rep("\t",depth).."["..tostring(k).."] = "..tostring(v))
@@ -122,8 +198,10 @@ end
 
 printTable(Settings)
 
+local settingsVersion = 4
+
 local defaultSettings = {
-    version = 1,
+    version = settingsVersion,
     toggles = {
         autoLaunch = false,
         enableTheme = true
@@ -138,11 +216,13 @@ for k,v in pairs(themes.dark) do
     defaultSettings.themedata.customTheme[k] = v
 end
 
-Settings = defaultSettings
+if not Settings["version"] or Settings["version"] < settingsVersion then
+    Settings = defaultSettings
+    warn("PotatoMod2:Warning: Settings have been lost due to corruption or unhandled version update.")
+end
+
 
 themes["current"] = themes[Settings.themedata.current]
-
-SetSettings:FireServer(defaultSettings)
 
 --[[
     1 - instance
@@ -256,7 +336,7 @@ local function regdynamic(connectFunc, disconnectFunc, argtable, instance, debug
     argtable = argtable or {}
 
     if instance then
-        instance[3][#instance[3]+1] = {connectFunc,disconnectFunc,argtable,{}} -- {connectFunc,disconnectFunc,args,connections}
+        instance[3][#instance[3]+1] = {connectFunc,disconnectFunc,argtable} -- {connectFunc,disconnectFunc,args}
     else
         if not debug then
             guiLayoutUnknown = true
@@ -272,6 +352,9 @@ local function dynamicReplaceThemeConnect(instance,entry) -- replace all theme p
         -- [property]
             -- [original]
                 -- = replace
+    
+    entry[4] = {} -- Connections
+
     for property,values in pairs(entry[3]) do -- for all properties in argtable
         for init,replace in pairs(values) do
             if instance[property] == init then
@@ -289,6 +372,7 @@ local function dynamicReplaceThemeConnect(instance,entry) -- replace all theme p
 end
 
 local function dynamicReplaceThemeDisconnect(instance,entry) -- kill active replaces and reset to inital value
+    if not entry[4] then return end -- If not connected, can't disconnect
     for _,connection in pairs(entry[4]) do -- for all connections
         connection:Disconnect()
     end
@@ -306,6 +390,9 @@ local function dynamicReplacePropertyConnect(instance,entry) -- replace all prop
         -- [property]
             -- [original]
                 -- = replace
+
+    entry[4] = {} -- Connections
+
     for property,values in pairs(entry[3]) do -- for all properties in argtable
         for init,replace in pairs(values) do
             if instance[property] == init then
@@ -323,6 +410,7 @@ local function dynamicReplacePropertyConnect(instance,entry) -- replace all prop
 end
 
 local function dynamicReplacePropertyDisconnect(instance,entry) -- kill active replaces and reset to inital value
+    if not entry[4] then return end -- If not connected, can't disconnect
     for _,connection in pairs(entry[4]) do -- for all connections
         connection:Disconnect()
     end
@@ -360,7 +448,7 @@ end
 local function newdefault(instance, child, debug) -- Register a new instance with default properties
     local newStatic = newreg(instance, child, debug)
     if newStatic then
-        regdefault()
+        regdefault() -- Register default theme properties
     end
     return newStatic
 end
@@ -385,6 +473,18 @@ local function regheader(...)
                             }
             })
     end
+end
+
+-- PotatoMod Gui
+local PotatoTab = MenusBar:FindFirstChild("WindowButton")
+if PotatoTab then
+    PotatoTab.Size = UDim2.new(0,69,1,0)
+    local TextLabel = PotatoTab.TextLabel
+    TextLabel.Text = "PotatoMod"
+    PotatoTab.MenuFrame.Visible = false
+    PotatoTab.MenuFrame.Background.Visible = true
+else
+    handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs! (this is not good)")
 end
 
 -- CodeEditorLocal
@@ -514,26 +614,65 @@ if BasicObjects then
         regtheme("BackgroundColor3",theme.bg)
         regtheme("BorderColor3",theme.ol)
     end
-    local ItemTemplate = regdefault(BasicObjects,"BasicObjectsScript.ItemTemplate")
+    regdefault(BasicObjects,"BasicObjectsScript.ItemTemplate")
     newdefault(BasicObjects,"SelectText")
 end
 
-----Basic Objects
---BasicObjects.BasicObjectsScript.ItemTemplate.BackgroundColor3 = bgColor
---BasicObjects.BasicObjectsScript.ItemTemplate.BorderColor3 = olColor
-
 -- Explorer
+local function dynamicExplorerHandlerConnect(instance, entry)
+    entry[5] = {}
+
+    local function hookTextLabel(TextLabel)
+        if TextLabel:IsA("TextLabel") then
+            TextLabel.Font = themes.current["font"]
+            if TextLabel.TextColor3 == Color3.new(0,0,0) then
+                TextLabel.TextColor3 = themes.current["text"]
+            end
+            local connection = TextLabel:GetPropertyChangedSignal("TextColor3"):Connect(function()
+                if TextLabel.TextColor3 == Color3.new(0,0,0) then
+                    TextLabel.TextColor3 = themes.current["text"]
+                end
+            end)
+            entry[5][#entry[5]+1] = {TextLabel,connection}
+        end
+    end
+
+    for _,child in pairs(instance:GetChildren()) do
+        if child:FindFirstChild("ObjectName") then
+            hookTextLabel(child.ObjectName)
+        end
+    end
+    local connection = instance.ChildAdded:Connect(function(child)
+        if child:FindFirstChild("ObjectName") then
+            hookTextLabel(child.ObjectName)
+        end
+    end)
+    entry[4] = connection
+end
+
+local function dynamicExplorerHandlerDisconnect(instance, entry)
+    if not entry[4] then return end -- If not connected, can't disconnect
+    entry[4]:Disconnect()
+    for _,TextLabel in pairs(entry[5]) do 
+        TextLabel[2]:Disconnect()
+        TextLabel[1].Font = Enum.Font.SourceSans
+        TextLabel[1].TextColor3 = Color3.new(0,0,0)
+    end
+end
+
 local Explorer = newdefault(Windows,"Explorer")
 if Explorer then
     regheader(newreg(Explorer,"WindowHeader"))
     local ListOutline = newdefault(Explorer,"ListOutline")
     if ListOutline then
-        
+        local Explorer = newreg(ListOutline,"Explorer")
+        if Explorer then
+            regdynamic(dynamicExplorerHandlerConnect,
+                dynamicExplorerHandlerDisconnect)
+        end
     end
 end
 
---Explorer.ListOutline.BackgroundColor3 = bgColor
---Explorer.ListOutline.BorderColor3 = olColor
 
 --Properties
 local Properties = newdefault(Windows,"Properties")
@@ -670,12 +809,10 @@ if Topbar then
                         regtheme("BackgroundColor3",theme.header)
                         regtheme("BorderColor3",theme.ol)
                     end
-                    local Background = newreg(TextButton,"Background")
+                    local Background = newdefault(TextButton,"Background")
                     if Background then
                         regprop("BackgroundTransparency",0)
                         regprop("ImageTransparency",1)
-                        regtheme("BackgroundColor3",theme.bg)
-                        regtheme("BorderColor3",theme.ol)
                     end
                     if TextButton[1]:FindFirstChild("MenuFrame") then
                         local Background = newdefault(TextButton,"MenuFrame.Background")
@@ -697,16 +834,14 @@ if Topbar then
         end
     end
 
-    local PluginBar = newreg(Topbar,"PluginBar")
+    local PluginBar = newdefault(Topbar,"PluginBar")
     if PluginBar then
-        regtheme("BackgroundColor3",theme.header)
         regprop("BackgroundTransparency",0)
         regprop("ImageTransparency",1)
         for _,child in pairs(PluginBar[1]:GetChildren()) do
             if child:IsA("ImageLabel") then
-                local PluginGroup = newself(child)
+                local PluginGroup = newdefaultself(child)
                 if PluginGroup then
-                    regtheme("BackgroundColor3",theme.header)
                     regprop("ImageTransparency",1)
                     regprop("BackgroundTransparency",0)
                 end
@@ -785,8 +920,7 @@ local function dynamicOutputHandlerConnect(instance, entry)
 end
 
 local function dynamicOutputHandlerDisconnect(instance, entry)
-    if not entry[5] then return end -- If we have never connected, no need to disconnect
-                                    -- entry 5 is the TextBox entry table
+    if not entry[4] then return end -- If not connected, can't disconnect
     entry[4]:Disconnect() -- Disconnect if connected
     for _,textEntry in pairs(entry[5]) do -- Disconnect and reset all TextBoxes
         textEntry[2]:Disconnect()
@@ -819,49 +953,6 @@ if Output then
 end
 
 
-
--- PotatoMod Gui
-local PotatoTab = MenusBar:FindFirstChild("WindowButton")
-if PotatoTab then
-    PotatoTab = newself(PotatoTab)
-    regprop("")
-    regprop("BackgroundTransparency",0)
-    regtheme("BackgroundColor3",theme.header)
-    local TextLabel = newreg(PotatoTab,"TextLabel")
-    if TextLabel then
-        TextLabel[1].Text = "PotatoMod"
-        regfont()
-        regtheme("BackgroundColor3",theme.header)
-        regtheme("BorderColor3",theme.ol)
-    end
-    local Background = newreg(PotatoTab,"Background")
-    if Background then
-        regprop("BackgroundTransparency",0)
-        regprop("ImageTransparency",1)
-        regtheme("BackgroundColor3",theme.bg)
-        regtheme("BorderColor3",theme.ol)
-    end
-    if PotatoTab[1]:FindFirstChild("MenuFrame") then
-        local Background = newdefault(PotatoTab,"MenuFrame.Background")
-        if Background then
-            regprop("BackgroundTransparency",0)
-            regprop("BorderSizePixel",1)
-            if Background[1]:IsA("ImageLabel") then
-                regprop("ImageTransparency",1)
-            end
-            for _,desc in pairs(Background[1]:GetDescendants()) do
-                if desc:IsA("TextButton") or desc:IsA("TextLabel") or desc:IsA("Frame") then
-                    newdefaultself(desc)
-                end                               
-            end
-        end
-    end
-else
-    handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs! (this is not good)")
-end
-
-
-
 if guiLayoutUnknown == true then
     warn("PotatoMod2: Studio has likely updated! Unrecognized layout. PotatoMod will try it's best, but things will probably be broken.")
 end
@@ -869,46 +960,71 @@ end
 local RENDER_STATE_DEFAULT = 1
 local RENDER_STATE_POTATO = 2
 
-local function render(state)
+local divider = "-------------------------------------"
+
+local exceptionKeys = {}
+
+local function render(state,previousException) 
+    -- breakKey is used to not render things that caused an error
+    -- breakStep is which step broke
     for k,v in pairs(instanceList) do
         local set, message    
-        set, message = pcall(function() -- pcall as to not stop after error if can't set property
-            for property,value in pairs(v[2]) do -- Static theme changes
-                if state == RENDER_STATE_DEFAULT then
+        if not exceptionKeys[k] then -- If this key didn't fire an error
+            -- Step 1 (theme render)
+            set, message = pcall(function() -- pcall as to not stop after error if can't set property
+                for property,value in pairs(v[2]) do -- Static theme changes
+                    if state == RENDER_STATE_DEFAULT then
+                        v[1][property] = value[state]
+                    else
+                        v[1][property] = themes.current[value[state]]
+                    end
+                end
+            end)
+            if not set then
+                exceptionKeys[k] = true
+                local err = "Error during theme render stage.\nRender state: "..tostring(state).."\n"..message
+                if previousException then
+                    err = "During the handling of the exception\n"..divider.."\n"..previousException.."\n"..divider.."\nAnother exception occured\n\n"..err
+                end
+                render(RENDER_STATE_DEFAULT,err)
+                handleError(err)
+            end
+            -- Step 2 (property override)
+            set, message = pcall(function() -- pcall as to not stop after error if can't set property
+                for property,value in pairs(v[4]) do -- Static property changes
                     v[1][property] = value[state]
-                else
-                    v[1][property] = themes.current[value[state]]
                 end
-            end
-        end)
-        set, message = pcall(function() -- pcall as to not stop after error if can't set property
-            for property,value in pairs(v[4]) do -- Static property changes
-                v[1][property] = value[state]
-            end
-        end)
-        if not set then
-            if state ~= RENDER_STATE_DEFAULT then
-                render(RENDER_STATE_DEFAULT)
-                handleError("Error during render stage.\n"..message)
-            end
-        end
-        set, message = pcall(function() -- pcall as to not stop after error
-            for _,entry in pairs(v[3]) do -- Dynamic properties
-                if state == RENDER_STATE_DEFAULT then
-                    entry[2](v[1],entry) -- Disconnect
-                else
-                    entry[2](v[1],entry) -- Disconnect
-                    entry[1](v[1],entry) -- Connect
+            end)
+            if not set then
+                exceptionKeys[k] = true
+                local err = "Error during property override stage.\nRender state: "..tostring(state).."\n"..message
+                if previousException then
+                    err = "During the handling of the exception\n"..divider.."\n"..previousException.."\n"..divider.."\nAnother exception occured\n\n"..err
                 end
+                render(RENDER_STATE_DEFAULT,err)
+                handleError(err)
             end
-        end)
-        if not set then
-            if state ~= RENDER_STATE_DEFAULT then
-                render(RENDER_STATE_DEFAULT)
-                handleError("Error during hook stage.\n"..message)
-            end
+            -- Step 3 (hook/dynamic stage)
+            set, message = pcall(function() -- pcall as to not stop after error
+                for _,entry in pairs(v[3]) do -- Dynamic properties
+                    if state == RENDER_STATE_DEFAULT then
+                        entry[2](v[1],entry) -- Disconnect
+                    else
+                        entry[2](v[1],entry) -- Disconnect
+                        entry[1](v[1],entry) -- Connect
+                    end
+                end
+            end)
+            if not set then
+                exceptionKeys[k] = true
+                local err = "Error during hook stage.\nRender state: "..tostring(state).."\n"..message
+                if previousException then
+                    err = "During the handling of the exception\n"..divider.."\n"..previousException.."\n"..divider.."\nAnother exception occured\n\n"..err
+                end
+                render(RENDER_STATE_DEFAULT,err)
+                handleError(err)
+            end 
         end
-        
     end
 end
 
@@ -916,7 +1032,7 @@ local enabled = false
 
 local function disablePotatoMod()
     render(RENDER_STATE_DEFAULT)
-    SetSettings:FireServer(Settings)
+    SetSettings:FireServer(serializeTable(Settings))
     PotatoTab.Visible = false
     enabled = false
     warn("PotatoMod2 disabled.")
@@ -946,7 +1062,7 @@ end
 if Settings.toggles.autoLaunch or maindebug then
     enablePotatoMod()
     if maindebug then
-        task.wait(5)
+        task.wait(3)
         disablePotatoMod()
     end
 end
