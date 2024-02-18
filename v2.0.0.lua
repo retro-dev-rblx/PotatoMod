@@ -23,7 +23,7 @@ local themes = {
         ol = Color3.fromRGB(60,60,60),
         font = Enum.Font.SourceSans,
         font_bold = Enum.Font.SourceSansBold,
-        text = Color3.fromRGB(240,240,240),
+        text = Color3.fromRGB(240,0,240),
         text_print = Color3.fromRGB(240,240,240),
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
@@ -178,25 +178,47 @@ local Settings = deserializeTable(GetSettings:InvokeServer())
 
 local function printTable(table,depth, key)
     depth = depth or 1
-    if typeof(table) == "Instance" then
-        table = table:GetChildren()
+
+    local function textBrackets()
+        if typeof(table) == "Instance" then
+            if #table:GetChildren() == 0 then
+                return "{}"
+            else
+                return "{"
+            end
+        else
+            if #table == 0 then
+                return "{}"
+            else
+                return "{"
+            end
+        end
     end
-    if key then
-        print(string.rep("\t",depth-1).."["..tostring(key).."] = ".."{")
+    if typeof(table) == "Instance" then
+        if key then
+            print(string.rep("\t",depth-1).."["..tostring(key).."] = <["..table.ClassName..":"..table.Name.."]> = "..textBrackets())
+        else
+            print(string.rep("\t",depth-1).."<["..table.ClassName..":"..table.Name.."]> = "..textBrackets())
+        end
+        table = table:GetChildren()
     else
-        print(string.rep("\t",depth-1).."{")
+        if key then
+            print(string.rep("\t",depth-1).."["..tostring(key).."] = "..textBrackets())
+        else
+            print(string.rep("\t",depth-1)..textBrackets())
+        end
     end
     for k,v in pairs(table) do
-        if type(v) == "table" or typeof(table) == "Instance" then
+        if type(v) == "table" or typeof(v) == "Instance" then
             printTable(v,depth+1,k)
         else
             print(string.rep("\t",depth).."["..tostring(k).."] = "..tostring(v))
         end
     end
-    print(string.rep("\t",depth-1).."}")
+    if #table > 0 then
+        print(string.rep("\t",depth-1).."}")
+    end
 end
-
-printTable(Settings)
 
 local settingsVersion = 4
 
@@ -620,26 +642,38 @@ end
 
 -- Explorer
 local function dynamicExplorerHandlerConnect(instance, entry)
-    entry[5] = {}
+    entry[5] = {} -- ObjectName
+
+    local function recolorTextLabel(TextLabel)
+        if TextLabel.Parent.ImageTransparency == 1 then -- Unhovered
+            TextLabel.TextColor3 = themes.current["text"]
+        elseif TextLabel.Parent.Image == "rbxassetid://6381376761" then -- Hovered
+            TextLabel.TextColor3 = Color3.new(0,0,0)
+        elseif TextLabel.Parent.Image == "rbxassetid://6381375977" then -- Selected
+            TextLabel.TextColor3 = Color3.new(1,1,1)
+        end
+    end
 
     local function hookTextLabel(TextLabel)
         if TextLabel:IsA("TextLabel") then
             TextLabel.Font = themes.current["font"]
-            if TextLabel.TextColor3 == Color3.new(0,0,0) then
-                TextLabel.TextColor3 = themes.current["text"]
-            end
-            local connection = TextLabel:GetPropertyChangedSignal("TextColor3"):Connect(function()
-                if TextLabel.TextColor3 == Color3.new(0,0,0) then
-                    TextLabel.TextColor3 = themes.current["text"]
-                end
+            recolorTextLabel(TextLabel)
+            local textConnection = TextLabel:GetPropertyChangedSignal("TextColor3"):Connect(function()
+                recolorTextLabel(TextLabel)
             end)
-            entry[5][#entry[5]+1] = {TextLabel,connection}
+            local imageConnection = TextLabel.Parent:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
+                recolorTextLabel(TextLabel)
+            end)
+            entry[5][#entry[5]+1] = {TextLabel,textConnection,imageConnection}
         end
     end
 
     for _,child in pairs(instance:GetChildren()) do
-        if child:FindFirstChild("ObjectName") then
-            hookTextLabel(child.ObjectName)
+        printTable(child)
+        if child:IsA("ImageLabel") then
+            if child:FindFirstChild("ObjectName") then
+                hookTextLabel(child.ObjectName)
+            end
         end
     end
     local connection = instance.ChildAdded:Connect(function(child)
@@ -654,9 +688,16 @@ local function dynamicExplorerHandlerDisconnect(instance, entry)
     if not entry[4] then return end -- If not connected, can't disconnect
     entry[4]:Disconnect()
     for _,TextLabel in pairs(entry[5]) do 
-        TextLabel[2]:Disconnect()
+        TextLabel[2]:Disconnect() -- TextColor listener
+        TextLabel[3]:Disconnect() -- Selection listener
         TextLabel[1].Font = Enum.Font.SourceSans
-        TextLabel[1].TextColor3 = Color3.new(0,0,0)
+        if TextLabel[1].Parent.ImageTransparency == 1 then -- Unhovered
+            TextLabel[1].TextColor3 = Color3.new(0,0,0)
+        elseif TextLabel[1].Parent.Image == "rbxassetid://6381376761" then -- Hovered
+            TextLabel[1].TextColor3 = Color3.new(0,0,0)
+        elseif TextLabel[1].Parent.Image == "rbxassetid://6381375977" then -- Selected
+            TextLabel[1].TextColor3 = Color3.new(1,1,1)
+        end
     end
 end
 
@@ -869,52 +910,75 @@ local outputColorReplace = {
 }
 
 local function dynamicOutputHandlerConnect(instance, entry)
-    -- entry
-        -- 4 - list connection (not table)
-        -- 5 - TextBox entry table
-            -- instance
-            -- connection
-
     entry[5] = {} -- TextBox entries
+    entry[6] = {} -- Table list entries
 
-    local function hookTextBox(TextBox)
-        if TextBox:IsA("TextBox") then
-            for init,replace in pairs(outputColorReplace) do
-                if TextBox.TextColor3 == init then
-                    if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
-                        -- We can set this as bold font
-                        TextBox.Font = themes.current["font_bold"]
-                    else
-                        -- We can set this as normal font
-                        TextBox.Font = themes.current["font"]
-                    end
-                    TextBox.TextColor3 = themes.current[replace]
+    local function outputReplaceColors(textgui)
+        for init,replace in pairs(outputColorReplace) do
+            if textgui.TextColor3 == init then
+                if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
+                    -- We can set this as bold font
+                    textgui.Font = themes.current["font_bold"]
+                else
+                    -- We can set this as normal font
+                    textgui.Font = themes.current["font"]
                 end
+                textgui.TextColor3 = themes.current[replace]
             end
-            local connection = TextBox:GetPropertyChangedSignal("TextColor3"):Connect(function()
-                for init,replace in pairs(outputColorReplace) do
-                    if TextBox.TextColor3 == init then
-                        if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
-                            -- We can set this as bold font
-                            TextBox.Font = themes.current["font_bold"]
-                        else
-                            -- We can set this as normal font
-                            TextBox.Font = themes.current["font"]
-                        end
-                        TextBox.TextColor3 = themes.current[replace]
-                    end
+        end
+    end
+
+    local function hookTextGui(textgui)
+        outputReplaceColors(textgui)
+        entry[5][#entry[5]+1] = {textgui}
+    end
+
+    local function hookOutput(Element)
+        if Element:IsA("TextBox") then
+            hookTextGui(Element)
+        elseif Element:IsA("TextLabel") then -- Table Output
+            -- retro tableClosed Image (6x6) - rbxassetid://8949637080
+            -- retro tableOpened Image (6x6) - rbxassetid://8949639420
+            -- mod tableClosed Image (7x7) - rbxassetid://16405593659
+            -- mod tableOpened Image (7x7) - rbxassetid://16421483906
+            
+            hookTextGui(Element)
+            
+            for _,child in pairs(Element.List:GetChildren()) do
+                hookOutput(child)
+            end
+            local listConnection = Element.List.ChildAdded:Connect(function(child)
+                hookOutput(child)
+            end)
+            
+            Element.ExpandButton.ImageLabel.ImageColor3 = themes.current["text"]
+            Element.ExpandButton.Frame.BackgroundColor3 = themes.current["text"]
+
+            local ImageLabel = Element.ExpandButton.ImageLabel
+            if ImageLabel.Image == "rbxassetid://8949637080" then -- tableClosed
+                    ImageLabel.Image = "rbxassetid://16405593659"
+                elseif ImageLabel.Image == "rbxassetid://8949639420" then --tableOpened
+                    ImageLabel.Image = "rbxassetid://16421483906"
+                end
+            local imageConnection = Element.ExpandButton.ImageLabel:GetPropertyChangedSignal("Image"):Connect(function()
+                if ImageLabel.Image == "rbxassetid://8949637080" then -- tableClosed
+                    ImageLabel.Image = "rbxassetid://16405593659"
+                elseif ImageLabel.Image == "rbxassetid://8949639420" then --tableOpened
+                    ImageLabel.Image = "rbxassetid://16421483906"
                 end
             end)
-            entry[5][#entry[5]+1] = {TextBox,connection}
+
+            local newEntry = {Element,listConnection,imageConnection}
+            entry[6][#entry[6]+1] = newEntry
         end
     end
 
     for _,TextBox in pairs(instance:GetChildren()) do
-        hookTextBox(TextBox)
+        hookOutput(TextBox)
     end
 
     local connection = instance.ChildAdded:Connect(function(child)
-        hookTextBox(child)
+        hookOutput(child)
     end)
     entry[4] = connection
 end
@@ -922,18 +986,44 @@ end
 local function dynamicOutputHandlerDisconnect(instance, entry)
     if not entry[4] then return end -- If not connected, can't disconnect
     entry[4]:Disconnect() -- Disconnect if connected
-    for _,textEntry in pairs(entry[5]) do -- Disconnect and reset all TextBoxes
-        textEntry[2]:Disconnect()
+
+    local function outputReplaceColors(textgui)
         for init,replace in pairs(outputColorReplace) do
-            if textEntry[1].TextColor3 == themes.current[replace] then
+            if textgui[1].TextColor3 == themes.current[replace] then
                 if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
                     -- We can set this as bold font
-                    textEntry[1].Font = themes.current["font_bold"]
+                    textgui[1].Font = themes.current["font_bold"]
                 else
                     -- We can set this as normal font
-                    textEntry[1].Font = themes.current["font"]
+                    textgui[1].Font = themes.current["font"]
                 end
-                textEntry[1].TextColor3 = init
+                textgui[1].TextColor3 = init
+            end
+        end
+    end
+
+    for _,textEntry in pairs(entry[5]) do -- Disconnect and reset all TextBoxes
+        if textEntry[1] then
+            outputReplaceColors(textEntry)
+        end
+    end
+
+    for _,tableOutput in pairs(entry[6]) do -- Disconnect and reset all TableOutputs
+        -- retro tableClosed Image (6x6) - rbxassetid://8949637080
+        -- retro tableOpened Image (6x6) - rbxassetid://8949639420
+        -- mod tableClosed Image (7x7) - rbxassetid://16405593659
+        -- mod tableOpened Image (7x7) - rbxassetid://16421483906
+
+        if tableOutput[1] then
+            tableOutput[2]:Disconnect()
+            tableOutput[3]:Disconnect()
+            tableOutput[1].ExpandButton.ImageLabel.ImageColor3 = Color3.new(0,0,0)
+            tableOutput[1].ExpandButton.Frame.BackgroundColor3 = Color3.new(0,0,0)
+            local ImageLabel = tableOutput[1].ExpandButton.ImageLabel
+            if ImageLabel.Image == "rbxassetid://16405593659" then -- tableClosed
+                ImageLabel.Image = "rbxassetid://8949637080"
+            elseif ImageLabel.Image == "rbxassetid://16421483906" then --tableOpened
+                ImageLabel.Image = "rbxassetid://8949639420"
             end
         end
     end
@@ -966,7 +1056,6 @@ local exceptionKeys = {}
 
 local function render(state,previousException) 
     -- breakKey is used to not render things that caused an error
-    -- breakStep is which step broke
     for k,v in pairs(instanceList) do
         local set, message    
         if not exceptionKeys[k] then -- If this key didn't fire an error
@@ -1031,9 +1120,9 @@ end
 local enabled = false
 
 local function disablePotatoMod()
-    render(RENDER_STATE_DEFAULT)
-    SetSettings:FireServer(serializeTable(Settings))
     PotatoTab.Visible = false
+    SetSettings:FireServer(serializeTable(Settings))
+    render(RENDER_STATE_DEFAULT)
     enabled = false
     warn("PotatoMod2 disabled.")
 end
@@ -1062,7 +1151,7 @@ end
 if Settings.toggles.autoLaunch or maindebug then
     enablePotatoMod()
     if maindebug then
-        task.wait(3)
+        task.wait(5)
         disablePotatoMod()
     end
 end
