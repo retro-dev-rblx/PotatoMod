@@ -23,11 +23,13 @@ local themes = {
         ol = Color3.fromRGB(60,60,60),
         font = Enum.Font.SourceSans,
         font_bold = Enum.Font.SourceSansBold,
-        text = Color3.fromRGB(240,0,240),
+        text = Color3.fromRGB(240,240,240),
         text_print = Color3.fromRGB(240,240,240),
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
-        text_warn = Color3.fromRGB(255, 128, 0)
+        text_warn = Color3.fromRGB(255, 128, 0),
+        zebra_1 = Color3.fromRGB(40,40,40),
+        zebra_2 = Color3.fromRGB(50, 50, 50)
     },
     classic = {
         header = Color3.fromRGB(80,80,80),
@@ -39,7 +41,9 @@ local themes = {
         text_print = Color3.fromRGB(240,240,240),
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
-        text_warn = Color3.fromRGB(255, 128, 0)
+        text_warn = Color3.fromRGB(255, 128, 0),
+        zebra_1 = Color3.fromRGB(40,40,40),
+        zebra_2 = Color3.fromRGB(40,40,40)
     }
 }
 
@@ -53,7 +57,9 @@ local theme = {
     text_print = "text_print",
     text_info = "text_info",
     text_error = "text_error",
-    text_warn = "text_warn"
+    text_warn = "text_warn",
+    zebra_1 = "zebra_1",
+    zebra_2 = "zebra_2"
 }
 
 -- PotatoInjector has no script property
@@ -497,6 +503,14 @@ local function regheader(...)
     end
 end
 
+local function newheader(instance, child, debug) -- Register a new instance with default properties
+    local newHeader = newreg(instance, child, debug)
+    if newHeader then
+        regheader() -- Register default theme properties
+    end
+    return newHeader
+end
+
 -- PotatoMod Gui
 local PotatoTab = MenusBar:FindFirstChild("WindowButton")
 if PotatoTab then
@@ -517,7 +531,7 @@ end
 -- Toolbox
 local Toolbox = newdefault(Windows,"Toolbox")
 if Toolbox then
-    regheader(newreg(Toolbox,"WindowHeader"))
+    newheader(Toolbox,"WindowHeader")
     
     local EmbedOutline = newdefault(Toolbox,"EmbedOutline")
     if EmbedOutline then
@@ -617,17 +631,116 @@ if Toolbox then
             end
         end
     end
-end
+end 
 
 -- BasicObjects
+local function dynamicBasicObjectsHandlerConnect(instance, entry)
+    entry[5] = {} -- ObjectName
+    entry[6] = {} -- Instance Entries
+
+    local function recolorTextLabel(TextLabel)
+        if TextLabel.Parent.MouseOverHighlight.Visible then -- Hovered
+            TextLabel.TextColor3 = Color3.new(0,0,0)
+        elseif TextLabel.Parent.SelectionHighlight.Visible then -- Selected
+            TextLabel.TextColor3 = Color3.new(1,1,1)
+        else
+            TextLabel.TextColor3 = themes.current["text"]
+        end
+    end
+
+    local function hookTextLabel(TextLabel)
+        if TextLabel:IsA("TextLabel") then
+            TextLabel.Font = themes.current["font"]
+            TextLabel.Parent.NoteLabel.Font = themes.current["font"]
+            TextLabel.Parent.NoteLabel.TextColor3 = themes.current["text"]
+            recolorTextLabel(TextLabel)
+            local textConnection = TextLabel:GetPropertyChangedSignal("TextColor3"):Connect(function()
+                recolorTextLabel(TextLabel)
+            end)
+            local selectConnection = TextLabel.Parent.SelectionHighlight:GetPropertyChangedSignal("Visible"):Connect(function()
+                recolorTextLabel(TextLabel)
+            end)
+            local hoverConnection = TextLabel.Parent.MouseOverHighlight:GetPropertyChangedSignal("Visible"):Connect(function()
+                recolorTextLabel(TextLabel)
+            end)
+            entry[5][#entry[5]+1] = {TextLabel,textConnection,selectConnection,hoverConnection}
+        end
+    end
+
+    local function recolorInstance(instance)
+        if instance.BackgroundColor3 == Color3.new(1,1,1) then
+            instance.BackgroundColor3 = themes.current["zebra_1"]
+        elseif instance.BackgroundColor3 == Color3.fromRGB(246,246,246) then
+            instance.BackgroundColor3 = themes.current["zebra_2"]
+        end
+    end
+
+    local function hookInstance(instance)
+        recolorInstance(instance)
+        local connection = instance:GetPropertyChangedSignal("TextColor3"):Connect(function()
+            recolorTextLabel(instance)
+        end)
+        entry[6][#entry[6]+1] = {instance,connection}
+    end
+
+    for _,child in pairs(instance:GetChildren()) do
+        if child:IsA("TextButton") then
+            hookInstance(child)
+            if child:FindFirstChild("ObjectName") then
+                hookTextLabel(child.ObjectName)
+            end
+        end
+    end
+    local connection = instance.ChildAdded:Connect(function(child)
+        if child:IsA("TextButton") then
+            hookInstance(child)
+            if child:FindFirstChild("ObjectName") then
+                hookTextLabel(child.ObjectName)
+            end
+        end
+    end)
+    entry[4] = connection
+end
+
+local function dynamicBasicObjectsHandlerDisconnect(instance, entry)
+    if not entry[4] then return end -- If not connected, can't disconnect
+    entry[4]:Disconnect()
+    for _,TextLabel in pairs(entry[5]) do 
+        TextLabel[2]:Disconnect() -- TextColor listener
+        TextLabel[3]:Disconnect() -- Selection listener
+        TextLabel[4]:Disconnect() -- MouseOver listener
+        TextLabel[1].Font = Enum.Font.SourceSans
+        TextLabel[1].Parent.NoteLabel.Font = Enum.Font.SourceSans
+        TextLabel[1].Parent.NoteLabel.TextColor3 = Color3.new(0.5,0.5,0.5)
+        if TextLabel[1].Parent.MouseOverHighlight.Visible then -- Hovered
+            TextLabel[1].TextColor3 = Color3.new(0,0,0)
+        elseif TextLabel[1].Parent.SelectionHighlight.Visible then -- Selected
+            TextLabel[1].TextColor3 = Color3.new(1,1,1)
+        else
+            TextLabel[1].TextColor3 = Color3.new(0,0,0)
+        end
+    end
+    for _,InstanceEntry in pairs(entry[6]) do
+        InstanceEntry[2]:Disconnect() -- Color listener
+        if InstanceEntry[1].BackgroundColor3 == themes.current["zebra_1"] then
+            InstanceEntry[1].BackgroundColor3 = Color3.new(1,1,1)
+        elseif InstanceEntry[1].BackgroundColor3 == themes.current["zebra_2"] then
+            InstanceEntry[1].BackgroundColor3 = Color3.fromRGB(246,246,246)
+        end
+    end
+end
+
 local BasicObjects = newdefault(Windows,"Basic Objects")
 if BasicObjects then
-    regheader(newreg(BasicObjects,"WindowHeader"))
+
+    newheader(BasicObjects,"WindowHeader")
     local ListOutline = newdefault(BasicObjects,"ListOutline")
     if ListOutline then
         local List = newdefault(ListOutline,"List")
         if List then
             regtheme("BackgroundTransparency",0)
+            regdynamic(dynamicBasicObjectsHandlerConnect,
+                dynamicBasicObjectsHandlerDisconnect)
         end
     end
     local SearchBar = newreg(BasicObjects,"SearchBar")
@@ -669,7 +782,6 @@ local function dynamicExplorerHandlerConnect(instance, entry)
     end
 
     for _,child in pairs(instance:GetChildren()) do
-        printTable(child)
         if child:IsA("ImageLabel") then
             if child:FindFirstChild("ObjectName") then
                 hookTextLabel(child.ObjectName)
@@ -703,7 +815,7 @@ end
 
 local Explorer = newdefault(Windows,"Explorer")
 if Explorer then
-    regheader(newreg(Explorer,"WindowHeader"))
+    newheader(Explorer,"WindowHeader")
     local ListOutline = newdefault(Explorer,"ListOutline")
     if ListOutline then
         local Explorer = newreg(ListOutline,"Explorer")
@@ -718,7 +830,7 @@ end
 --Properties
 local Properties = newdefault(Windows,"Properties")
 if Properties then
-    regheader(newreg(Properties,"WindowHeader"))
+    newheader(Properties,"WindowHeader")
     local ListOutline = newdefault(Properties,"ListOutline")
     if ListOutline then
         local Header = newdefault(ListOutline,"Header")
@@ -1031,7 +1143,7 @@ end
 
 local Output = newdefault(Windows,"Output")
 if Output then
-    regheader(newreg(Output,"WindowHeader"))
+    newheader(Output,"WindowHeader")
     local ListOutline = newdefault(Output,"ListOutline")
     if ListOutline then
         local List = newreg(ListOutline,"List")
