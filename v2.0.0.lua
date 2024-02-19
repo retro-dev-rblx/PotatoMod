@@ -28,8 +28,10 @@ local themes = {
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
         text_warn = Color3.fromRGB(255, 128, 0),
-        zebra_1 = Color3.fromRGB(40,40,40),
-        zebra_2 = Color3.fromRGB(50, 50, 50)
+        zebra_1 = Color3.fromRGB(46,46,46),
+        zebra_2 = Color3.fromRGB(50, 50, 50),
+        scrollback = Color3.fromRGB(40,40,40),
+        scrollbar = Color3.fromRGB(64,64,64)
     },
     classic = {
         header = Color3.fromRGB(80,80,80),
@@ -43,7 +45,10 @@ local themes = {
         text_error = Color3.fromRGB(255,0,0),
         text_warn = Color3.fromRGB(255, 128, 0),
         zebra_1 = Color3.fromRGB(40,40,40),
-        zebra_2 = Color3.fromRGB(40,40,40)
+        zebra_2 = Color3.fromRGB(40,40,40),
+        scrollback = Color3.fromRGB(40,40,40),
+        scrollbar = Color3.fromRGB(80,80,80)
+        
     }
 }
 
@@ -59,7 +64,9 @@ local theme = {
     text_error = "text_error",
     text_warn = "text_warn",
     zebra_1 = "zebra_1",
-    zebra_2 = "zebra_2"
+    zebra_2 = "zebra_2",
+    scrollback = "scrollback",
+    scrollbar = "scrollbar"
 }
 
 -- PotatoInjector has no script property
@@ -270,6 +277,7 @@ themes["current"] = themes[Settings.themedata.current]
         2 - potato
             [property]
                 {initial, replace}
+    5 - delete?
     Register new object
 ]]
 
@@ -371,9 +379,13 @@ local function regdynamic(connectFunc, disconnectFunc, argtable, instance, debug
             return nil
         end
     end
-
 end
 
+local function marktemp(instance, debug) -- Mark to be deleted
+    instance = instance or currentInst
+    debug = debug or false
+    instance[5] = true
+end
 
 local function dynamicReplaceThemeConnect(instance,entry) -- replace all theme property [keys] with [value]
     -- argtable
@@ -503,12 +515,161 @@ local function regheader(...)
     end
 end
 
-local function newheader(instance, child, debug) -- Register a new instance with default properties
+local function newheader(instance, child, debug) -- Register a new header
     local newHeader = newreg(instance, child, debug)
     if newHeader then
-        regheader() -- Register default theme properties
+        regheader()
     end
     return newHeader
+end
+
+local function regscrollbar(...)
+    -- mod scroll arrow - rbxassetid://16434877920
+    local function hideSomeStuff(Bar)
+        local SemiHover = newreg(Bar,"SemiHover")
+        if SemiHover then
+            regprop("Image","")
+            regprop("BackgroundTransparency",1)
+        end
+        local Hover = newreg(Bar,"Hover")
+        if Hover then
+            regprop("Image","")
+            regprop("BackgroundTransparency",1)
+        end
+        local Down = newreg(Bar,"Down")
+        if Down then
+            regprop("Image","")
+            regprop("BackgroundTransparency",1)
+        end
+    end
+    local Scrollbar = currentInst
+    printTable(Scrollbar[1])
+    regtheme("BackgroundColor3",theme.scrollback)
+    regtheme("BorderColor3",theme.ol)
+    local Vertical = newreg(Scrollbar,"Vertical")
+    if Vertical then
+        local DownButton = newreg(Vertical,"DownButton")
+        if DownButton then
+            hideSomeStuff(DownButton)
+            local NewArrow = newself(Instance.new("ImageLabel"))
+            if NewArrow then
+                marktemp()
+                regtheme("BackgroundColor3",theme.scrollbar)
+                NewArrow[1].Parent = DownButton[1]
+                NewArrow[1].ZIndex = 5
+                NewArrow[1].Size = DownButton[1].Size
+                NewArrow[1].Active = false
+                NewArrow[1].Rotation = 0
+                NewArrow[1].Image = "rbxassetid://16434877920"
+            end
+        end
+        local UpButton = newreg(Vertical,"UpButton")
+        if UpButton then
+            hideSomeStuff(UpButton)
+            local NewArrow = newself(Instance.new("ImageLabel"))
+            if NewArrow then
+                marktemp()
+                regtheme("BackgroundColor3",theme.scrollbar)
+                NewArrow[1].Parent = UpButton[1]
+                NewArrow[1].ZIndex = 5
+                NewArrow[1].Size = UpButton[1].Size
+                NewArrow[1].Active = false
+                NewArrow[1].Rotation = 180
+                NewArrow[1].Image = "rbxassetid://16434877920"
+            end
+        end
+        local BarExtents = newreg(Vertical,"BarExtents")
+        if BarExtents then
+            regprop("ImageTransparency",1)
+            local Bar = newreg(BarExtents,"Bar")
+            if Bar then -- I'd prefer not to replace the image, however it's most efficient here
+                regprop("Image","")
+                regprop("BackgroundTransparency",0)
+                regprop("AutoButtonColor",true)
+                regtheme("BackgroundColor3",theme.scrollbar)
+                regtheme("BorderColor3",theme.ol)
+                hideSomeStuff(Bar)
+                local Thing = newreg(Bar,"Thing")
+                if Thing then
+                    regprop("Visible",false)
+                end
+            end
+        end
+        local LeftBorder = newreg(Vertical,"LeftBorder")
+        if LeftBorder then
+            regtheme("BackgroundColor3",theme.ol)
+        end
+        local RightBorder = newreg(Vertical,"RightBorder")
+        if RightBorder then
+            regtheme("BackgroundColor3",theme.ol)
+        end
+    end
+    local Horizontal = newreg(Scrollbar,"Horizontal")
+    if Horizontal then
+        local LeftButton = newreg(Horizontal,"LeftButton")
+        if LeftButton then
+            hideSomeStuff(LeftButton)
+            local NewArrow = newself(Instance.new("ImageLabel"))
+            if NewArrow then
+                marktemp()
+                regtheme("BackgroundColor3",theme.scrollbar)
+                NewArrow[1].Parent = LeftButton[1]
+                NewArrow[1].ZIndex = 5
+                NewArrow[1].Size = LeftButton[1].Size
+                NewArrow[1].Active = false
+                NewArrow[1].Rotation = 90
+                NewArrow[1].Image = "rbxassetid://16434877920"
+            end
+        end
+        local RightButton = newreg(Horizontal,"RightButton")
+        if RightButton then
+            hideSomeStuff(RightButton)
+            local NewArrow = newself(Instance.new("ImageLabel"))
+            if NewArrow then
+                marktemp()
+                regtheme("BackgroundColor3",theme.scrollbar)
+                NewArrow[1].Parent = RightButton[1]
+                NewArrow[1].ZIndex = 5
+                NewArrow[1].Size = RightButton[1].Size
+                NewArrow[1].Active = false
+                NewArrow[1].Rotation = -90
+                NewArrow[1].Image = "rbxassetid://16434877920"
+            end
+        end
+        local BarExtents = newreg(Horizontal,"BarExtents")
+        if BarExtents then
+            regprop("ImageTransparency",1)
+            local Bar = newreg(BarExtents,"Bar")
+            if Bar then -- I'd prefer not to replace the image, however it's most efficient here
+                regprop("Image","")
+                regprop("BackgroundTransparency",0)
+                regprop("AutoButtonColor",true)
+                regtheme("BackgroundColor3",theme.scrollbar)
+                regtheme("BorderColor3",theme.ol)
+                hideSomeStuff(Bar)
+                local Thing = newreg(Bar,"Thing")
+                if Thing then
+                    regprop("Visible",false)
+                end
+            end
+        end
+        local LowerBorder = newreg(Horizontal,"LowerBorder")
+        if LowerBorder then
+            regtheme("BackgroundColor3",theme.ol)
+        end
+        local UpperBorder = newreg(Horizontal,"UpperBorder")
+        if UpperBorder then
+            regtheme("BackgroundColor3",theme.ol)
+        end
+    end
+end
+
+local function newscrollbar(instance, child, debug) -- Register a new scrolbar
+    local newScrollbar = newreg(instance, child, debug)
+    if newScrollbar then
+        regscrollbar()
+    end
+    return newScrollbar
 end
 
 -- PotatoMod Gui
@@ -535,18 +696,22 @@ if Toolbox then
     
     local EmbedOutline = newdefault(Toolbox,"EmbedOutline")
     if EmbedOutline then
-        local List = newdefault(EmbedOutline,"ListFrame.List")
-        if List then
-            regprop("BackgroundTransparency",0)
-            for _,child in pairs(List[1]:GetChildren()) do
-                if child:isA("Frame") then
-                    local Model = newdefaultself(child)
-                    if Model then
-                        newdefault(Model,"TextLabel")
-                        newdefault(Model,"ImageLabel")
+        local ListFrame = newreg(EmbedOutline,"ListFrame")
+        if ListFrame then
+            local List = newdefault(ListFrame,"List")
+            if List then
+                regprop("BackgroundTransparency",0)
+                for _,child in pairs(List[1]:GetChildren()) do
+                    if child:isA("Frame") then
+                        local Model = newdefaultself(child)
+                        if Model then
+                            newdefault(Model,"TextLabel")
+                            newdefault(Model,"ImageLabel")
+                        end
                     end
                 end
             end
+            newscrollbar(ListFrame,"ScrollbarBackground")
         end
         local Controls = newdefault(EmbedOutline,"Controls")
         if Controls then
@@ -677,10 +842,13 @@ local function dynamicBasicObjectsHandlerConnect(instance, entry)
 
     local function hookInstance(instance)
         recolorInstance(instance)
-        local connection = instance:GetPropertyChangedSignal("TextColor3"):Connect(function()
+        local textConnection = instance:GetPropertyChangedSignal("TextColor3"):Connect(function()
             recolorTextLabel(instance)
         end)
-        entry[6][#entry[6]+1] = {instance,connection}
+        local bgConnection = instance:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+            recolorInstance(instance)
+        end)
+        entry[6][#entry[6]+1] = {instance,textConnection,bgConnection}
     end
 
     for _,child in pairs(instance:GetChildren()) do
@@ -721,7 +889,8 @@ local function dynamicBasicObjectsHandlerDisconnect(instance, entry)
         end
     end
     for _,InstanceEntry in pairs(entry[6]) do
-        InstanceEntry[2]:Disconnect() -- Color listener
+        InstanceEntry[2]:Disconnect() -- Text listener
+        InstanceEntry[3]:Disconnect() -- BG listener
         if InstanceEntry[1].BackgroundColor3 == themes.current["zebra_1"] then
             InstanceEntry[1].BackgroundColor3 = Color3.new(1,1,1)
         elseif InstanceEntry[1].BackgroundColor3 == themes.current["zebra_2"] then
@@ -742,6 +911,7 @@ if BasicObjects then
             regdynamic(dynamicBasicObjectsHandlerConnect,
                 dynamicBasicObjectsHandlerDisconnect)
         end
+        newscrollbar(ListOutline,"ScrollbarBackground")
     end
     local SearchBar = newreg(BasicObjects,"SearchBar")
     if SearchBar then
@@ -823,6 +993,7 @@ if Explorer then
             regdynamic(dynamicExplorerHandlerConnect,
                 dynamicExplorerHandlerDisconnect)
         end
+        newscrollbar(ListOutline,"ScrollbarBackground")
     end
 end
 
@@ -848,6 +1019,7 @@ if Properties then
         if LeftOutlineOverHeader then
             regtheme("BackgroundColor3",theme.ol)
         end
+        newscrollbar(ListOutline,"ScrollbarBackground")
     end
     local IdentityBackground = newreg(Properties,"IdentityBackground")
     if IdentityBackground then
@@ -1151,6 +1323,7 @@ if Output then
             regdynamic(dynamicOutputHandlerConnect,
                 dynamicOutputHandlerDisconnect)
         end
+        newscrollbar(ListOutline,"ScrollbarBackground")
     end
 end
 
@@ -1225,6 +1398,15 @@ local function render(state,previousException)
                 render(RENDER_STATE_DEFAULT,err)
                 handleError(err)
             end 
+            -- Step 4
+            if state == RENDER_STATE_DEFAULT then
+                if v[5] then
+                    if v[1] then
+                        v[1]:Destroy()
+                        instanceList[k] = nil
+                    end
+                end
+            end
         end
     end
 end
