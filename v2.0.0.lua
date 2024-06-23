@@ -1,7 +1,11 @@
 -- PotatoMod v2.0.0 created by NicePotato (.nicepotato)
 -- Credits to Cristiano and Ayray for letting this project exist
+-- Credits to ayray for helping during development
+
+-- Mind my spaghetti (much less than v1 though lol)
 
 -- TODO remake dropdown arrow for theme (toolbox)
+-- TODO hook tabs
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -11,14 +15,14 @@ local SetSettings = ReplicatedStorage.RemoteEvents.SetPotatoModSettings
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer.PlayerGui
-local StudioGui = PlayerGui.StudioGui-- The GUI of the studio
-local Windows = StudioGui.Windows -- The main windows of the studio
-local Topbar = StudioGui.Topbar
-local MenusBar = Topbar.MenusBar
+local StudioGui = PlayerGui:WaitForChild("StudioGui",5) -- The GUI of the studio
+local Windows = StudioGui:WaitForChild("Windows",5) -- The main windows of the studio
+local Topbar = StudioGui:WaitForChild("Topbar",5)
+local MenusBar = Topbar:WaitForChild("MenusBar",5)
 
 local themes = {
     dark = {
-        header = Color3.fromRGB(60,60,60),
+        header = Color3.fromRGB(64,64,64),
         bg = Color3.fromRGB(46,46,46),
         ol = Color3.fromRGB(60,60,60),
         font = Enum.Font.SourceSans,
@@ -28,6 +32,7 @@ local themes = {
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
         text_warn = Color3.fromRGB(255, 128, 0),
+        property_header = Color3.fromRGB(60,60,60),
         zebra_1 = Color3.fromRGB(46,46,46),
         zebra_2 = Color3.fromRGB(50, 50, 50),
         scrollback = Color3.fromRGB(40,40,40),
@@ -44,8 +49,9 @@ local themes = {
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
         text_warn = Color3.fromRGB(255, 128, 0),
+        property_header = Color3.fromRGB(60,60,60),
         zebra_1 = Color3.fromRGB(40,40,40),
-        zebra_2 = Color3.fromRGB(40,40,40),
+        zebra_2 = Color3.fromRGB(44,44,44),
         scrollback = Color3.fromRGB(40,40,40),
         scrollbar = Color3.fromRGB(80,80,80)
         
@@ -63,6 +69,7 @@ local theme = {
     text_info = "text_info",
     text_error = "text_error",
     text_warn = "text_warn",
+    property_header = "property_header",
     zebra_1 = "zebra_1",
     zebra_2 = "zebra_2",
     scrollback = "scrollback",
@@ -74,8 +81,6 @@ local maindebug = false
 if not script then
     warn("PotatoInjector has injected PotatoMod2!!! wow!!!")
     maindebug = true
-else
-    task.wait(1) -- Wait for studio to get ready
 end
 
 local instanceList = {}
@@ -105,8 +110,8 @@ local function getNested(obj, children, debug)
         if not obj:IsA("Instance") or not obj:FindFirstChild(v) then
             if not debug then
                 guiLayoutUnknown = true
-                return nil
             end
+            return nil
         end
         obj = obj[v]
     end
@@ -209,27 +214,27 @@ local function printTable(table,depth, key)
     end
     if typeof(table) == "Instance" then
         if key then
-            print(string.rep("\t",depth-1).."["..tostring(key).."] = <["..table.ClassName..":"..table.Name.."]> = "..textBrackets())
+            print(string.rep("  ",depth-1).."["..tostring(key).."] = <["..table.ClassName..":"..table.Name.."]> = "..textBrackets())
         else
-            print(string.rep("\t",depth-1).."<["..table.ClassName..":"..table.Name.."]> = "..textBrackets())
+            print(string.rep("  ",depth-1).."<["..table.ClassName..":"..table.Name.."]> = "..textBrackets())
         end
         table = table:GetChildren()
     else
         if key then
-            print(string.rep("\t",depth-1).."["..tostring(key).."] = "..textBrackets())
+            print(string.rep("  ",depth-1).."["..tostring(key).."] = "..textBrackets())
         else
-            print(string.rep("\t",depth-1)..textBrackets())
+            print(string.rep("  ",depth-1)..textBrackets())
         end
     end
     for k,v in pairs(table) do
         if type(v) == "table" or typeof(v) == "Instance" then
             printTable(v,depth+1,k)
         else
-            print(string.rep("\t",depth).."["..tostring(k).."] = "..tostring(v))
+            print(string.rep("  ",depth).."["..tostring(k).."] = "..tostring(v))
         end
     end
     if #table > 0 then
-        print(string.rep("\t",depth-1).."}")
+        print(string.rep("  ",depth-1).."}")
     end
 end
 
@@ -244,7 +249,8 @@ local defaultSettings = {
     themedata = {
         current = "dark",
         customTheme = {}
-    }
+    },
+    used_before = false
 }
 
 for k,v in pairs(themes.dark) do
@@ -253,13 +259,22 @@ end
 
 if not Settings["version"] or Settings["version"] < settingsVersion then
     Settings = defaultSettings
-    warn("PotatoMod2:Warning: Settings have been lost due to corruption or unhandled version update.")
+    warn("PotatoMod2:Warning: Settings and Data has been lost due to corruption or unhandled version update.")
 end
-
 
 themes["current"] = themes[Settings.themedata.current]
 
---[[
+local last_save = 0
+local function SaveSettings(force)
+    force = force or false
+
+    if os.clock() - last_save >= 1 or force then
+        last_save = os.clock()
+        SetSettings:FireServer(serializeTable(Settings))
+    end
+end
+
+--[[ docs probably outdated lol
     1 - instance
     2 - theme
         1 - default
@@ -283,18 +298,23 @@ themes["current"] = themes[Settings.themedata.current]
 
 local currentInst -- Instance to apply property to
 
+local PotatoTab
+
+local function registerStudio()
+
 -- I made these lowercase to type them easier
+
 local function newreg(instance, child, debug) -- Register a new instance to be modified
     debug = debug or false
     if type(instance) == "table" then instance = instance[1] end
-    if instance and getNested(instance,child) then 
-        local new = {getNested(instance,child),{},{},{}} -- {instance, themeProperties, dynamics, properties}
+    if instance and getNested(instance,child,debug) then 
+        local new = {getNested(instance,child,debug),{},{},{}} -- {instance, themeProperties, dynamics, properties}
         instanceList[#instanceList+1] = new
         currentInst = new
         return new
     else
         if not debug then
-            warn("PotatoMod2: "..instance.Name.."."..child.. " is missing!")
+            warn("PotatoMod2: "..instance:GetFullName().."."..child.. " is missing!")
             guiLayoutUnknown = true
             currentInst = nil
             return nil
@@ -311,7 +331,7 @@ local function newself(instance,debug)
         return new
     else
         if not debug then
-            warn("PotatoMod2: "..instance.Name.. " is missing!")
+            warn("PotatoMod2: "..instance:GetFullName().. " is missing!")
             guiLayoutUnknown = true
             currentInst = nil
             return nil
@@ -543,7 +563,6 @@ local function regscrollbar(...)
         end
     end
     local Scrollbar = currentInst
-    printTable(Scrollbar[1])
     regtheme("BackgroundColor3",theme.scrollback)
     regtheme("BorderColor3",theme.ol)
     local Vertical = newreg(Scrollbar,"Vertical")
@@ -555,12 +574,14 @@ local function regscrollbar(...)
             if NewArrow then
                 marktemp()
                 regtheme("BackgroundColor3",theme.scrollbar)
+                regtheme("BorderColor3",theme.scrollbar)
                 NewArrow[1].Parent = DownButton[1]
                 NewArrow[1].ZIndex = 5
                 NewArrow[1].Size = DownButton[1].Size
                 NewArrow[1].Active = false
                 NewArrow[1].Rotation = 0
                 NewArrow[1].Image = "rbxassetid://16434877920"
+                NewArrow[1].Visible = false
             end
         end
         local UpButton = newreg(Vertical,"UpButton")
@@ -570,12 +591,14 @@ local function regscrollbar(...)
             if NewArrow then
                 marktemp()
                 regtheme("BackgroundColor3",theme.scrollbar)
+                regtheme("BorderColor3",theme.scrollbar)
                 NewArrow[1].Parent = UpButton[1]
                 NewArrow[1].ZIndex = 5
                 NewArrow[1].Size = UpButton[1].Size
                 NewArrow[1].Active = false
                 NewArrow[1].Rotation = 180
                 NewArrow[1].Image = "rbxassetid://16434877920"
+                NewArrow[1].Visible = false
             end
         end
         local BarExtents = newreg(Vertical,"BarExtents")
@@ -591,7 +614,9 @@ local function regscrollbar(...)
                 hideSomeStuff(Bar)
                 local Thing = newreg(Bar,"Thing")
                 if Thing then
-                    regprop("Visible",false)
+                    regprop("Image","")
+                    regprop("BackgroundTransparency",1)
+                    hideSomeStuff(Thing)
                 end
             end
         end
@@ -613,12 +638,14 @@ local function regscrollbar(...)
             if NewArrow then
                 marktemp()
                 regtheme("BackgroundColor3",theme.scrollbar)
+                regtheme("BorderColor3",theme.scrollbar)
                 NewArrow[1].Parent = LeftButton[1]
                 NewArrow[1].ZIndex = 5
                 NewArrow[1].Size = LeftButton[1].Size
                 NewArrow[1].Active = false
                 NewArrow[1].Rotation = 90
                 NewArrow[1].Image = "rbxassetid://16434877920"
+                NewArrow[1].Visible = false
             end
         end
         local RightButton = newreg(Horizontal,"RightButton")
@@ -628,12 +655,14 @@ local function regscrollbar(...)
             if NewArrow then
                 marktemp()
                 regtheme("BackgroundColor3",theme.scrollbar)
+                regtheme("BorderColor3",theme.scrollbar)
                 NewArrow[1].Parent = RightButton[1]
                 NewArrow[1].ZIndex = 5
                 NewArrow[1].Size = RightButton[1].Size
                 NewArrow[1].Active = false
                 NewArrow[1].Rotation = -90
                 NewArrow[1].Image = "rbxassetid://16434877920"
+                NewArrow[1].Visible = false
             end
         end
         local BarExtents = newreg(Horizontal,"BarExtents")
@@ -649,7 +678,9 @@ local function regscrollbar(...)
                 hideSomeStuff(Bar)
                 local Thing = newreg(Bar,"Thing")
                 if Thing then
-                    regprop("Visible",false)
+                    regprop("Image","")
+                    regprop("BackgroundTransparency",1)
+                    hideSomeStuff(Thing)
                 end
             end
         end
@@ -673,13 +704,82 @@ local function newscrollbar(instance, child, debug) -- Register a new scrolbar
 end
 
 -- PotatoMod Gui
-local PotatoTab = MenusBar:FindFirstChild("WindowButton")
+PotatoTab = MenusBar:FindFirstChild("WindowButton")
 if PotatoTab then
     PotatoTab.Size = UDim2.new(0,69,1,0)
     local TextLabel = PotatoTab.TextLabel
     TextLabel.Text = "PotatoMod"
     PotatoTab.MenuFrame.Visible = false
     PotatoTab.MenuFrame.Background.Visible = true
+
+    local PotatoFrame = Instance.new("Frame")
+    PotatoFrame.Size = UDim2.new(1,0,1,0)
+    PotatoFrame.BackgroundColor3 = themes.dark.bg
+    PotatoFrame.BorderColor3 = themes.dark.ol
+    PotatoFrame.Name = "PotatoFrame"
+    PotatoFrame.Parent = PotatoTab.MenuFrame.Background
+
+    local LazyTipLol = Instance.new("TextLabel")
+    LazyTipLol.Text = [[proper gui coming soon to a PotatoMod2 near you
+(I am too lazy rn sorry, be happy with a new version)
+credits to NicePotato (me), Ayray, and Cristiano]]
+    LazyTipLol.Parent = PotatoFrame
+    LazyTipLol.TextColor3 = themes.dark.text
+    LazyTipLol.TextSize = 16
+    LazyTipLol.Font = themes.dark.font
+    LazyTipLol.BackgroundTransparency = 1
+    LazyTipLol.Size = UDim2.new(0,300,0,50)
+    LazyTipLol.Position = UDim2.new(0,5,0,0)
+    LazyTipLol.TextXAlignment = "Left"
+
+    local AutoInjectText = Instance.new("TextLabel")
+    AutoInjectText.Text = "Auto Launch"
+    AutoInjectText.Parent = PotatoFrame
+    AutoInjectText.TextColor3 = themes.dark.text
+    AutoInjectText.TextSize = 16
+    AutoInjectText.Font = themes.dark.font
+    AutoInjectText.BackgroundTransparency = 1
+    AutoInjectText.Size = UDim2.new(0,80,0,20)
+    AutoInjectText.Position = UDim2.new(0,5,0,55)
+    AutoInjectText.TextXAlignment = "Left"
+
+    local function renderButtonState(button, state)
+        if state then
+            button.Position = UDim2.new(0,22,0,2)
+            button.BackgroundColor3 = Color3.fromRGB(25,235,25)
+            button.BorderColor3 = Color3.fromRGB(25,235,25)
+        else
+            button.Position = UDim2.new(0,2,0,2)
+            button.BackgroundColor3 = Color3.fromRGB(255,25,25)
+            button.BorderColor3 = Color3.fromRGB(235,25,25)
+        end
+    end
+
+    local AutoInjectButton = Instance.new("TextButton")
+    AutoInjectButton.Text = ""
+    AutoInjectButton.BackgroundColor3 = themes.dark.bg
+    AutoInjectButton.BorderColor3 = themes.dark.ol
+    AutoInjectButton.Size = UDim2.new(0,40,0,20)
+    AutoInjectButton.Position = UDim2.new(0,85,0,0)
+    AutoInjectButton.Parent = AutoInjectText
+
+    local AutoInjectSwitch = Instance.new("Frame")
+    
+    AutoInjectSwitch.Size = UDim2.new(0,16,0,16)
+    AutoInjectSwitch.BorderMode = Enum.BorderMode.Inset
+    AutoInjectSwitch.BorderSizePixel = 2
+    AutoInjectSwitch.Active = false
+    AutoInjectSwitch.Parent = AutoInjectButton
+
+    renderButtonState(AutoInjectSwitch, Settings.toggles["autoLaunch"])
+
+
+    AutoInjectButton.MouseButton1Click:Connect(function()
+        Settings.toggles["autoLaunch"] = not Settings.toggles["autoLaunch"]
+        renderButtonState(AutoInjectSwitch, Settings.toggles["autoLaunch"])
+        SaveSettings()
+    end)
+
 else
     handleError("Funny thing, the tab that PotatoMod embeds itself into has been removed by the devs! (this is not good)")
 end
@@ -877,24 +977,28 @@ local function dynamicBasicObjectsHandlerDisconnect(instance, entry)
         TextLabel[2]:Disconnect() -- TextColor listener
         TextLabel[3]:Disconnect() -- Selection listener
         TextLabel[4]:Disconnect() -- MouseOver listener
-        TextLabel[1].Font = Enum.Font.SourceSans
-        TextLabel[1].Parent.NoteLabel.Font = Enum.Font.SourceSans
-        TextLabel[1].Parent.NoteLabel.TextColor3 = Color3.new(0.5,0.5,0.5)
-        if TextLabel[1].Parent.MouseOverHighlight.Visible then -- Hovered
-            TextLabel[1].TextColor3 = Color3.new(0,0,0)
-        elseif TextLabel[1].Parent.SelectionHighlight.Visible then -- Selected
-            TextLabel[1].TextColor3 = Color3.new(1,1,1)
-        else
-            TextLabel[1].TextColor3 = Color3.new(0,0,0)
+        if TextLabel[1] then
+            TextLabel[1].Font = Enum.Font.SourceSans
+            TextLabel[1].Parent.NoteLabel.Font = Enum.Font.SourceSans
+            TextLabel[1].Parent.NoteLabel.TextColor3 = Color3.new(0.5,0.5,0.5)
+            if TextLabel[1].Parent.MouseOverHighlight.Visible then -- Hovered
+                TextLabel[1].TextColor3 = Color3.new(0,0,0)
+            elseif TextLabel[1].Parent.SelectionHighlight.Visible then -- Selected
+                TextLabel[1].TextColor3 = Color3.new(1,1,1)
+            else
+                TextLabel[1].TextColor3 = Color3.new(0,0,0)
+            end
         end
     end
     for _,InstanceEntry in pairs(entry[6]) do
         InstanceEntry[2]:Disconnect() -- Text listener
         InstanceEntry[3]:Disconnect() -- BG listener
-        if InstanceEntry[1].BackgroundColor3 == themes.current["zebra_1"] then
-            InstanceEntry[1].BackgroundColor3 = Color3.new(1,1,1)
-        elseif InstanceEntry[1].BackgroundColor3 == themes.current["zebra_2"] then
-            InstanceEntry[1].BackgroundColor3 = Color3.fromRGB(246,246,246)
+        if InstanceEntry[1] then
+            if InstanceEntry[1].BackgroundColor3 == themes.current["zebra_1"] then
+                InstanceEntry[1].BackgroundColor3 = Color3.new(1,1,1)
+            elseif InstanceEntry[1].BackgroundColor3 == themes.current["zebra_2"] then
+                InstanceEntry[1].BackgroundColor3 = Color3.fromRGB(246,246,246)
+            end
         end
     end
 end
@@ -939,6 +1043,7 @@ local function dynamicExplorerHandlerConnect(instance, entry)
 
     local function hookTextLabel(TextLabel)
         if TextLabel:IsA("TextLabel") then
+            local self_entry = #entry[5]+1
             TextLabel.Font = themes.current["font"]
             recolorTextLabel(TextLabel)
             local textConnection = TextLabel:GetPropertyChangedSignal("TextColor3"):Connect(function()
@@ -947,7 +1052,10 @@ local function dynamicExplorerHandlerConnect(instance, entry)
             local imageConnection = TextLabel.Parent:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
                 recolorTextLabel(TextLabel)
             end)
-            entry[5][#entry[5]+1] = {TextLabel,textConnection,imageConnection}
+            TextLabel.Destroying:Connect(function()
+                entry[5][self_entry] = nil
+            end)
+            entry[5][self_entry] = {TextLabel,textConnection,imageConnection}
         end
     end
 
@@ -972,13 +1080,15 @@ local function dynamicExplorerHandlerDisconnect(instance, entry)
     for _,TextLabel in pairs(entry[5]) do 
         TextLabel[2]:Disconnect() -- TextColor listener
         TextLabel[3]:Disconnect() -- Selection listener
-        TextLabel[1].Font = Enum.Font.SourceSans
-        if TextLabel[1].Parent.ImageTransparency == 1 then -- Unhovered
-            TextLabel[1].TextColor3 = Color3.new(0,0,0)
-        elseif TextLabel[1].Parent.Image == "rbxassetid://6381376761" then -- Hovered
-            TextLabel[1].TextColor3 = Color3.new(0,0,0)
-        elseif TextLabel[1].Parent.Image == "rbxassetid://6381375977" then -- Selected
-            TextLabel[1].TextColor3 = Color3.new(1,1,1)
+        if TextLabel[1] then
+            TextLabel[1].Font = Enum.Font.SourceSans
+            if TextLabel[1].Parent.ImageTransparency == 1 then -- Unhovered
+                TextLabel[1].TextColor3 = Color3.new(0,0,0)
+            elseif TextLabel[1].Parent.Image == "rbxassetid://6381376761" then -- Hovered
+                TextLabel[1].TextColor3 = Color3.new(0,0,0)
+            elseif TextLabel[1].Parent.Image == "rbxassetid://6381375977" then -- Selected
+                TextLabel[1].TextColor3 = Color3.new(1,1,1)
+            end
         end
     end
 end
@@ -999,6 +1109,196 @@ end
 
 
 --Properties
+local function dynamicPropertiesHandlerConnect(instance, entry)
+    entry[5] = {} -- Property Names
+    entry[6] = {} -- Property Entries
+    entry[7] = {} -- Category Headers
+
+    local function recolorTextLabel(TextLabel)
+        local function recolorValueHalf(color)
+            local ValueHalf = TextLabel.Parent.Parent.ValueHalf
+            for _,child in pairs(ValueHalf:GetChildren()) do
+                if child:IsA("TextBox") or child.Name == "EnumText" then
+                    child.TextColor3 = color
+                end
+            end
+        end
+
+        if TextLabel.Parent.Parent.MouseOverHighlight.Visible then -- Hovered
+            TextLabel.TextColor3 = Color3.new(0,0,0)
+            recolorValueHalf(Color3.new(0,0,0))
+        elseif TextLabel.Parent.Parent.SelectionHighlight.Visible then -- Selected
+            TextLabel.TextColor3 = Color3.new(1,1,1)
+            recolorValueHalf(Color3.new(1,1,1))
+        else
+            TextLabel.TextColor3 = themes.current["text"]
+            recolorValueHalf(themes.current["text"])
+        end
+    end
+
+    local function hookPropertyName(TextLabel)
+        local self_entry = #entry[5]+1
+        if TextLabel:IsA("TextLabel") then
+            TextLabel.Font = themes.current["font"]
+            recolorTextLabel(TextLabel)
+            local textConnection = TextLabel:GetPropertyChangedSignal("TextColor3"):Connect(function()
+                recolorTextLabel(TextLabel)
+            end)
+            local selectConnection = TextLabel.Parent.Parent.SelectionHighlight:GetPropertyChangedSignal("Visible"):Connect(function()
+                recolorTextLabel(TextLabel)
+            end)
+            local hoverConnection = TextLabel.Parent.Parent.MouseOverHighlight:GetPropertyChangedSignal("Visible"):Connect(function()
+                recolorTextLabel(TextLabel)
+            end)
+            local EnumText = TextLabel.Parent.Parent.ValueHalf:FindFirstChild("EnumText") or TextLabel.Parent.Parent.ValueHalf:FindFirstChildOfClass("TextBox")
+            local enumConnection
+            if EnumText then
+                enumConnection = EnumText:GetPropertyChangedSignal("TextColor3"):Connect(function()
+                    recolorTextLabel(TextLabel)
+                end)
+            end
+            entry[5][self_entry] = {TextLabel,textConnection,selectConnection,hoverConnection,enumConnection}
+
+            return self_entry
+        end
+    end
+
+    local function recolorPropertyBG(instance)
+        if instance.BackgroundColor3 == Color3.new(1,1,1) then
+            instance.BackgroundColor3 = themes.current["zebra_1"]
+        elseif instance.BackgroundColor3 == Color3.fromRGB(246,246,246) then
+            instance.BackgroundColor3 = themes.current["zebra_2"]
+        end
+    end
+
+    local function hookProperty(instance)
+        local self_entry = #entry[6]+1
+
+        for _,child in pairs(instance:GetChildren()) do
+            if child.Name == "Outline" then
+                child.BackgroundColor3 = themes.current.ol
+            end
+        end
+
+        recolorPropertyBG(instance)
+
+        instance.BorderColor3 = themes.current.ol
+        instance.PropertyHalf.Outline.BackgroundColor3 = themes.current.ol
+        local name_entry = hookPropertyName(instance.PropertyHalf.TextLabel)
+        local bgConnection = instance:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+            recolorPropertyBG(instance)
+        end)
+        instance.Destroying:Connect(function()
+            entry[5][name_entry] = nil
+            entry[6][self_entry] = nil
+        end)
+        entry[6][self_entry] = {instance,bgConnection}
+    end
+
+    local function recolor1Topbar(Topbar)
+        Topbar.BackgroundColor3 = themes.current.header
+        if Topbar.HoverGlow.Visible then
+            Topbar.CategoryName.TextColor3 = Color3.new(0,0,0)
+        else
+            Topbar.CategoryName.TextColor3 = themes.current.text
+        end
+    end
+
+    local function hookCategoryHeader(instance)
+        local self_entry = #entry[7]+1
+
+        recolor1Topbar(instance)
+        local topbar_connection = instance.HoverGlow:GetPropertyChangedSignal("Visible"):Connect(function()
+            recolor1Topbar(instance)
+        end)
+
+        instance.Destroying:Connect(function()
+            entry[7][self_entry] = nil
+        end)
+
+        entry[7][self_entry] = {instance, topbar_connection}
+    end
+
+    local function hookCategoryTemplate(child)
+        if child.Name == "CategoryTemplate" then
+            for _,child in pairs(child:GetChildren()) do
+                if child:IsA("Frame") then
+                    if child:FindFirstChild("CategoryName") then
+                        hookCategoryHeader(child)
+                    else
+                        hookProperty(child)
+                    end
+                end
+            end
+        end
+    end
+
+    for _,child in pairs(instance:GetChildren()) do
+        hookCategoryTemplate(child)
+    end
+    local connection = instance.ChildAdded:Connect(function(child)
+        hookCategoryTemplate(child)
+    end)
+    entry[4] = connection
+end
+
+local function dynamicPropertiesHandlerDisconnect(instance, entry)
+    if not entry[4] then return end -- If not connected, can't disconnect
+    entry[4]:Disconnect()
+
+    for _,TextLabel in pairs(entry[5]) do 
+        TextLabel[2]:Disconnect() -- TextColor listener
+        TextLabel[3]:Disconnect() -- Selection listener
+        TextLabel[4]:Disconnect() -- MouseOver listener
+        if TextLabel[5] then TextLabel[5]:Disconnect() end -- EnumText listener
+        if TextLabel[1] then
+            local function recolorValueHalf(color)
+                local ValueHalf = TextLabel[1].Parent.Parent.ValueHalf
+                for _,child in pairs(ValueHalf:GetChildren()) do
+                    if child:IsA("TextBox") or child.Name == "EnumText" then
+                        child.TextColor3 = color
+                    end
+                end
+            end
+
+            TextLabel[1].Font = Enum.Font.SourceSans
+            if TextLabel[1].Parent.Parent.MouseOverHighlight.Visible then -- Hovered
+                TextLabel[1].TextColor3 = Color3.new(0,0,0)
+                recolorValueHalf(Color3.new(0,0,0))
+            elseif TextLabel[1].Parent.Parent.SelectionHighlight.Visible then -- Selected
+                TextLabel[1].TextColor3 = Color3.new(1,1,1)
+                recolorValueHalf(Color3.new(1,1,1))
+            else
+                TextLabel[1].TextColor3 = Color3.new(0,0,0)
+                recolorValueHalf(Color3.new(0,0,0))
+            end
+        end
+    end
+    for _,InstanceEntry in pairs(entry[6]) do
+        InstanceEntry[2]:Disconnect() -- BG listener
+        if InstanceEntry[1] then
+            for _,child in pairs(InstanceEntry[1]:GetChildren()) do
+                if child.Name == "Outline" then
+                    child.BackgroundColor3 = Color3.fromRGB(216,216,216)
+                end
+            end
+
+            InstanceEntry[1].PropertyHalf.Outline.BackgroundColor3 = Color3.fromRGB(216,216,216)
+            if InstanceEntry[1].BackgroundColor3 == themes.current["zebra_1"] then
+                InstanceEntry[1].BackgroundColor3 = Color3.new(1,1,1)
+            elseif InstanceEntry[1].BackgroundColor3 == themes.current["zebra_2"] then
+                InstanceEntry[1].BackgroundColor3 = Color3.fromRGB(246,246,246)
+            end
+        end
+    end
+
+    for _,CategoryHeader in pairs(entry[7]) do
+        CategoryHeader[2]:Disconnect()
+        CategoryHeader[1].BackgroundColor3 = Color3.fromRGB(160,160,160)
+        CategoryHeader[1].CategoryName.TextColor3 = Color3.new(0,0,0) 
+    end
+end
+
 local Properties = newdefault(Windows,"Properties")
 if Properties then
     newheader(Properties,"WindowHeader")
@@ -1010,10 +1310,33 @@ if Properties then
             if Frame then
                 regtheme("BackgroundColor3",theme.ol)
             end
+            local Background = newreg(Header,"Background")
+            if Background then
+                regprop("ImageTransparency",1)
+                regprop("BackgroundTransparency",0)
+                regtheme("BackgroundColor3",theme.header)
+                regprop("BorderSizePixel",1)
+                regtheme("BorderColor3",theme.bg)
+            end
+            local BackgroundB = newreg(Header,"BackgroundB")
+            if BackgroundB then
+                regprop("ImageTransparency",1)
+                regprop("BackgroundTransparency",0)
+                regtheme("BackgroundColor3",theme.header)
+                regprop("BorderSizePixel",1)
+                regtheme("BorderColor3",theme.bg)
+            end
+            for _,child in pairs(Header[1]:GetChildren()) do
+                if child:IsA("TextLabel") then
+                    newdefaultself(child)
+                end
+            end
         end
         local PropertyList = newdefault(ListOutline,"PropertyList")
         if PropertyList then
-            
+            regdynamic(dynamicPropertiesHandlerConnect,
+                dynamicPropertiesHandlerDisconnect)
+            newdefault(PropertyList,"BumpForHeader")
         end
         local LeftOutlineOverHeader = newreg(ListOutline,"LeftOutlineOverHeader")
         if LeftOutlineOverHeader then
@@ -1064,12 +1387,101 @@ end
 
 
 -- TabBar
+-- I really can't be bothered right now...
+-- local function dynamicTabBarHandlerConnect(instance, entry)
+--     entry[6] = {}
+
+--     local function recolorTextLabel(TextLabel)
+--         print(TextLabel.Parent, TextLabel.Parent.Image)
+--         if TextLabel.Parent.Image == "8678265568" or TextLabel.Parent.Image == "rbxassetid://8678262348" then -- Selected
+--             TextLabel.TextColor3 = themes.current["text"]
+--             TextLabel.Parent.BackgroundColor3 = themes.current.header
+--         elseif TextLabel.Parent.Image == "rbxassetid://8678262348" then -- Hovered
+--             TextLabel.TextColor3 = Color3.new(0,0,0)
+--         elseif TextLabel.Parent.Image == "rbxassetid://8678267866" then -- Unselected
+--             TextLabel.TextColor3 = themes.current["text"]
+--             TextLabel.Parent.ImageTransparency = 1
+--             TextLabel.Parent.BackgroundColor3 = themes.current.bg
+--         end
+--     end
+
+--     local function hookTextLabel(TextLabel)
+--         if TextLabel:IsA("TextLabel") then
+--             local self_entry = #entry[6]+1
+--             TextLabel.Font = themes.current["font"]
+--             recolorTextLabel(TextLabel)
+--             local textConnection = TextLabel:GetPropertyChangedSignal("TextColor3"):Connect(function()
+--                 recolorTextLabel(TextLabel)
+--             end)
+--             local imageConnection = TextLabel.Parent:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
+--                 recolorTextLabel(TextLabel)
+--             end)
+--             TextLabel.Destroying:Connect(function()
+--                 entry[6][self_entry] = nil
+--             end)
+--             entry[6][self_entry] = {TextLabel,textConnection,imageConnection}
+--         end
+--     end
+
+--     local function hookTab(Tab)
+--         if Tab:IsA("ImageButton") then
+--             Tab.BottomLine.BackgroundColor3 = themes.current.ol
+--             hookTextLabel(Tab.TextLabel)
+--         end
+--         -- instance.Destroying:Connect(function()
+--         --     entry[2][self_entry] = nil
+--         -- end)
+
+--         -- entry[2][#entry[2]+1] = connection
+--     end
+
+--     for _,child in pairs(instance:GetChildren()) do
+--         hookTab(child)
+--     end
+--     local connection = instance.ChildAdded:Connect(function(child)
+--         hookTab(child)
+--     end)
+
+--     entry[5] = connection
+-- end
+
+-- local function dynamicTabBarHandlerDisconnect(instance, entry)
+--     if not entry[5] then return end -- If not connected, can't disconnect
+--     entry[5]:Disconnect()
+--     for _,child in pairs(instance:GetChildren()) do
+--         if child:IsA("ImageButton") then
+--             child.BottomLine.BackgroundColor3 = Color3.fromRGB(216,216,216)
+--         end
+--     end
+--     for _,TextLabel in pairs(entry[6]) do 
+--         TextLabel[2]:Disconnect() -- TextColor listener
+--         TextLabel[3]:Disconnect() -- Selection listener
+--         if TextLabel[1] then
+--             TextLabel[1].Font = Enum.Font.SourceSans
+--             if TextLabel[1].Parent.ImageTransparency == 1 then -- Unhovered
+--                 TextLabel[1].TextColor3 = Color3.new(0,0,0)
+--             elseif TextLabel[1].Parent.Image == "rbxassetid://8678262348" then -- Hovered
+--                 TextLabel[1].TextColor3 = Color3.new(0,0,0)
+--             elseif TextLabel[1].Parent.Image == "rbxassetid://8678267866" then -- Selected
+--                 TextLabel[1].TextColor3 = Color3.new(1,1,1)
+--             end
+--         end
+--     end
+-- end
+
 local TabBar = newdefault(StudioGui,"TabBar")
 if TabBar then
     local BottomLine = newreg(TabBar,"BottomLine")
     if BottomLine then
         regtheme("BackgroundColor3",theme.ol)
         regtheme("BorderColor3",theme.ol)
+    end
+
+    local List = newreg(TabBar,"List")
+    if List then
+        -- printTable(List[1])
+        -- regdynamic(dynamicTabBarHandlerConnect, -- TODO
+        --     dynamicTabBarHandlerDisconnect)
     end
 end
 
@@ -1147,10 +1559,12 @@ if Topbar then
                             if Background[1]:IsA("ImageLabel") then
                                 regprop("ImageTransparency",1)
                             end
-                            for _,desc in pairs(Background[1]:GetDescendants()) do
-                                if desc:IsA("TextButton") or desc:IsA("TextLabel") or desc:IsA("Frame") then
-                                    newdefaultself(desc)
-                                end                               
+                            if child.Name ~= "WindowButton" then
+                                for _,desc in pairs(Background[1]:GetDescendants()) do
+                                    if desc:IsA("TextButton") or desc:IsA("TextLabel") or desc:IsA("Frame") then
+                                        newdefaultself(desc)
+                                    end                               
+                                end
                             end
                         end
                     end
@@ -1213,8 +1627,9 @@ local function dynamicOutputHandlerConnect(instance, entry)
     end
 
     local function hookTextGui(textgui)
+        local self_entry = #entry[5]+1
         outputReplaceColors(textgui)
-        entry[5][#entry[5]+1] = {textgui}
+        entry[5][self_entry] = {textgui}
     end
 
     local function hookOutput(Element)
@@ -1225,8 +1640,9 @@ local function dynamicOutputHandlerConnect(instance, entry)
             -- retro tableOpened Image (6x6) - rbxassetid://8949639420
             -- mod tableClosed Image (7x7) - rbxassetid://16405593659
             -- mod tableOpened Image (7x7) - rbxassetid://16421483906
-            
-            hookTextGui(Element)
+
+            local self_entry = #entry[6]+1
+            local text_entry = hookTextGui(Element)
             
             for _,child in pairs(Element.List:GetChildren()) do
                 hookOutput(child)
@@ -1252,8 +1668,13 @@ local function dynamicOutputHandlerConnect(instance, entry)
                 end
             end)
 
+            instance.Destroying:Connect(function()
+                entry[5][text_entry] = nil
+                entry[6][self_entry] = nil
+            end)
+
             local newEntry = {Element,listConnection,imageConnection}
-            entry[6][#entry[6]+1] = newEntry
+            entry[6][self_entry] = newEntry
         end
     end
 
@@ -1276,10 +1697,10 @@ local function dynamicOutputHandlerDisconnect(instance, entry)
             if textgui[1].TextColor3 == themes.current[replace] then
                 if init == Color3.fromRGB(255,0,0) or init == Color3.fromRGB(255,128,0) then
                     -- We can set this as bold font
-                    textgui[1].Font = themes.current["font_bold"]
+                    textgui[1].Font = Enum.Font.SourceSansBold
                 else
                     -- We can set this as normal font
-                    textgui[1].Font = themes.current["font"]
+                    textgui[1].Font = Enum.Font.SourceSans
                 end
                 textgui[1].TextColor3 = init
             end
@@ -1314,6 +1735,8 @@ local function dynamicOutputHandlerDisconnect(instance, entry)
 end
 
 local Output = newdefault(Windows,"Output")
+local RightClickPopup = newdefault(StudioGui,"RightClickPopup", true)
+
 if Output then
     newheader(Output,"WindowHeader")
     local ListOutline = newdefault(Output,"ListOutline")
@@ -1325,12 +1748,38 @@ if Output then
         end
         newscrollbar(ListOutline,"ScrollbarBackground")
     end
+    RightClickPopup = RightClickPopup or newdefault(Output,"OutputScript.RightClickPopup", true)
+    if RightClickPopup then
+        local Background = newdefault(RightClickPopup,"Background")
+        regprop("BackgroundTransparency",0)
+        regprop("ImageTransparency",1)
+        if Background then
+            local ClearOutput = newdefault(Background,"ClearOutput")
+            if ClearOutput then
+                newdefault(ClearOutput,"NameLabel")
+                newdefault(ClearOutput,"ShortcutLabel")
+                local ImageLabel = newreg(ClearOutput,"ImageLabel")
+                if ImageLabel then
+                    regprop("ImageTransparency",1)
+                end
+                local Highlight = newreg(ClearOutput,"Highlight")
+                if Highlight then
+                    regtheme("BackgroundColor3",theme.ol)
+                    regprop("BorderSizePixel",0)
+                    regprop("BackgroundTransparency",0)
+                    regprop("ImageTransparency",1)
+                end
+            end
+        end
+    end
 end
 
 
 if guiLayoutUnknown == true then
     warn("PotatoMod2: Studio has likely updated! Unrecognized layout. PotatoMod will try it's best, but things will probably be broken.")
 end
+
+end -- registerStudio
 
 local RENDER_STATE_DEFAULT = 1
 local RENDER_STATE_POTATO = 2
@@ -1356,7 +1805,7 @@ local function render(state,previousException)
             end)
             if not set then
                 exceptionKeys[k] = true
-                local err = "Error during theme render stage.\nRender state: "..tostring(state).."\n"..message
+                local err = "Error during theme render stage.\nRender state: "..tostring(state).."\nKey: "..tostring(k).."\n".."Instance: "..v[1]:GetFullName().."\n"..message
                 if previousException then
                     err = "During the handling of the exception\n"..divider.."\n"..previousException.."\n"..divider.."\nAnother exception occured\n\n"..err
                 end
@@ -1371,7 +1820,7 @@ local function render(state,previousException)
             end)
             if not set then
                 exceptionKeys[k] = true
-                local err = "Error during property override stage.\nRender state: "..tostring(state).."\n"..message
+                local err = "Error during property override stage.\nRender state: "..tostring(state).."\nKey: "..tostring(k).."\n".."Instance: "..v[1]:GetFullName().."\n"..message
                 if previousException then
                     err = "During the handling of the exception\n"..divider.."\n"..previousException.."\n"..divider.."\nAnother exception occured\n\n"..err
                 end
@@ -1391,7 +1840,7 @@ local function render(state,previousException)
             end)
             if not set then
                 exceptionKeys[k] = true
-                local err = "Error during hook stage.\nRender state: "..tostring(state).."\n"..message
+                local err = "Error during hook stage.\nRender state: "..tostring(state).."\nKey: "..tostring(k).."\n".."Instance: "..v[1]:GetFullName().."\n"..message
                 if previousException then
                     err = "During the handling of the exception\n"..divider.."\n"..previousException.."\n"..divider.."\nAnother exception occured\n\n"..err
                 end
@@ -1399,11 +1848,17 @@ local function render(state,previousException)
                 handleError(err)
             end 
             -- Step 4
-            if state == RENDER_STATE_DEFAULT then
-                if v[5] then
+            if v[5] then
+                if state == RENDER_STATE_DEFAULT then
                     if v[1] then
                         v[1]:Destroy()
                         instanceList[k] = nil
+                    end
+                elseif state == RENDER_STATE_POTATO then
+                    if v[1] then
+                        if v[1]:IsA("GuiObject") then
+                            v[1].Visible = true
+                        end
                     end
                 end
             end
@@ -1415,7 +1870,10 @@ local enabled = false
 
 local function disablePotatoMod()
     PotatoTab.Visible = false
-    SetSettings:FireServer(serializeTable(Settings))
+    if PotatoTab.MenuFrame.Background:FindFirstChild("PotatoFrame") then
+        PotatoTab.MenuFrame.Background.PotatoFrame:Destroy()
+    end
+    SaveSettings(true)
     render(RENDER_STATE_DEFAULT)
     enabled = false
     warn("PotatoMod2 disabled.")
@@ -1428,6 +1886,27 @@ local function enablePotatoMod()
     end
     PotatoTab.Visible = true
     warn("PotatoMod2 loaded.")
+    if not Settings["used_before"] then
+        Settings["used_before"] = true
+        warn("This appears to be your first time using PotatoMod2")
+        warn("You can enable auto-launch in the PotatoMod tab")
+        warn("Tip: You can clear output by right-clicking it and pressing Clear Output")
+    end
+end
+
+local registered = false
+
+local function registerStudioProtected()
+    if not registered then
+        registered = true
+        local set, message = pcall(function()
+            registerStudio()
+        end)
+        if not set then
+            local err = "Error during register stage.\n".."\n"..message
+            handleError(err)
+        end 
+    end
 end
 
 if script then -- Real PotatoMod, do startup stuffs
@@ -1437,15 +1916,18 @@ if script then -- Real PotatoMod, do startup stuffs
         if enabled then
             warn("PotatoMod2 is already loaded.")
         else
+            game.Players.PlayerRemoving:Connect(SaveSettings(true))
+            registerStudioProtected()
             enablePotatoMod()
         end
     end)
 end
 
 if Settings.toggles.autoLaunch or maindebug then
+    registerStudioProtected()
     enablePotatoMod()
-    if maindebug then
-        task.wait(5)
-        disablePotatoMod()
-    end
+    -- if maindebug then
+    --     task.wait(5)
+    --     disablePotatoMod()
+    -- end
 end
