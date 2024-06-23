@@ -1910,8 +1910,7 @@ local function registerStudioProtected()
 end
 
 if script then -- Real PotatoMod, do startup stuffs
-    local EnableBind = Instance.new("BindableEvent")
-    EnableBind.Parent = script
+    local EnableBind = script.Enable
     EnableBind.Event:Connect(function()
         if enabled then
             warn("PotatoMod2 is already loaded.")
