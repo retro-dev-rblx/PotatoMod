@@ -1,12 +1,7 @@
-*.lua
-*.luau
-*.py
-*.bat
-*.exe
-*.old
+*
+
+!README.md
+!RELEASE.lua
+!v1.x.lua
 !v2.0.lua
 !v3.0.lua
-!RELEASE.lua
-
-nginx
-conf
