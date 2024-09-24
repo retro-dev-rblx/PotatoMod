@@ -32,7 +32,6 @@ local themes = {
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
         text_warn = Color3.fromRGB(255, 128, 0),
-        property_header = Color3.fromRGB(60,60,60),
         zebra_1 = Color3.fromRGB(46,46,46),
         zebra_2 = Color3.fromRGB(50, 50, 50),
         scrollback = Color3.fromRGB(40,40,40),
@@ -49,12 +48,10 @@ local themes = {
         text_info = Color3.fromRGB(0,155,255),
         text_error = Color3.fromRGB(255,0,0),
         text_warn = Color3.fromRGB(255, 128, 0),
-        property_header = Color3.fromRGB(60,60,60),
         zebra_1 = Color3.fromRGB(40,40,40),
         zebra_2 = Color3.fromRGB(44,44,44),
         scrollback = Color3.fromRGB(40,40,40),
         scrollbar = Color3.fromRGB(80,80,80)
-        
     }
 }
 
@@ -69,7 +66,6 @@ local theme = {
     text_info = "text_info",
     text_error = "text_error",
     text_warn = "text_warn",
-    property_header = "property_header",
     zebra_1 = "zebra_1",
     zebra_2 = "zebra_2",
     scrollback = "scrollback",
